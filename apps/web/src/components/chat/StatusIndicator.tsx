@@ -4,9 +4,10 @@ import type { ConnectionState } from "@owly/shared";
 interface StatusIndicatorProps {
   state: ConnectionState;
   commonInterests?: string[];
+  className?: string;
 }
 
-export function StatusIndicator({ state, commonInterests }: StatusIndicatorProps) {
+export function StatusIndicator({ state, commonInterests, className = "" }: StatusIndicatorProps) {
   const configs: Record<ConnectionState, { label: string; dotClassName: string }> = {
     idle: { label: "Ready to chat", dotClassName: "bg-[var(--sx-ink-mute)]" },
     finding: {
@@ -27,9 +28,11 @@ export function StatusIndicator({ state, commonInterests }: StatusIndicatorProps
   const config = configs[state] || configs.idle;
 
   return (
-    <div className="inline-flex items-center gap-2 border border-[var(--sx-hairline-on-dark)] px-3 py-1 sx-caption uppercase tracking-wider">
+    <div
+      className={`inline-flex max-w-full items-center gap-2 border border-[var(--sx-hairline-on-dark)] px-3 py-1 sx-caption uppercase tracking-wider ${className}`}
+    >
       <span className={`size-2 shrink-0 rounded-full ${config.dotClassName}`} />
-      <span>{config.label}</span>
+      <span className="truncate">{config.label}</span>
     </div>
   );
 }

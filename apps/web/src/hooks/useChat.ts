@@ -19,6 +19,12 @@ export function useChat() {
   const cooldownEndRef = useRef(0);
   const lastOutgoingIdRef = useRef<string | null>(null);
   const webrtcHandlersRef = useRef<WebrtcInboundHandlers | null>(null);
+  const joinQueueRef = useRef<(interests?: string[]) => Promise<void>>(
+    async () => {}
+  );
+  const joiningRef = useRef(false);
+  const reconnectSoonRef = useRef<number | null>(null);
+  const findingReconnectsRef = useRef(0);
   const [sendCooldownSeconds, setSendCooldownSeconds] = useState(0);
   const [webrtcInitiator, setWebrtcInitiator] = useState<boolean | null>(null);
 
@@ -43,6 +49,36 @@ export function useChat() {
       autoQueueTimerRef.current = null;
     }
   }, []);
+
+  const clearReconnectSoon = useCallback(() => {
+    if (reconnectSoonRef.current) {
+      clearTimeout(reconnectSoonRef.current);
+      reconnectSoonRef.current = null;
+    }
+  }, []);
+
+  const markQueueSettled = useCallback(() => {
+    joiningRef.current = false;
+    findingReconnectsRef.current = 0;
+    clearReconnectSoon();
+  }, [clearReconnectSoon]);
+
+  const scheduleAutoQueue = useCallback(
+    (message: string) => {
+      useAppStore.getState().addMessage({
+        id: nanoid(),
+        sender: "system",
+        content: message,
+        timestamp: new Date(),
+      });
+      clearAutoQueueTimer();
+      autoQueueTimerRef.current = window.setTimeout(() => {
+        autoQueueTimerRef.current = null;
+        void joinQueueRef.current();
+      }, 2000);
+    },
+    [clearAutoQueueTimer]
+  );
 
   const clearSendCooldown = useCallback(() => {
     if (cooldownTimerRef.current) {
@@ -115,15 +151,51 @@ export function useChat() {
     if (!wsClientRef.current) {
       wsClientRef.current = new OwlyWSClient(session.token);
 
+      wsClientRef.current.onClose(() => {
+        const { connectionState } = useAppStore.getState();
+        setWebrtcInitiator(null);
+        store.setRoomId(null);
+
+        if (connectionState === "finding" || joiningRef.current) {
+          store.setConnectionState("finding");
+          findingReconnectsRef.current += 1;
+          if (findingReconnectsRef.current > 3) {
+            joiningRef.current = false;
+            store.setConnectionState("error");
+            return;
+          }
+          if (!reconnectSoonRef.current) {
+            reconnectSoonRef.current = window.setTimeout(() => {
+              reconnectSoonRef.current = null;
+              void joinQueueRef.current();
+            }, 100);
+          }
+          return;
+        }
+
+        if (
+          connectionState === "connected" ||
+          connectionState === "partner_left"
+        ) {
+          store.setConnectionState("disconnected");
+          scheduleAutoQueue(
+            "Connection lost. Rejoining the queue in 2 seconds..."
+          );
+        }
+      });
+
       wsClientRef.current.on((event) => {
         switch (event.type) {
           case "queue.waiting":
+            markQueueSettled();
             setWebrtcInitiator(null);
             store.setConnectionState("finding");
             store.setQueuePosition(event.data.position ?? 1);
             break;
 
           case "match.found":
+            markQueueSettled();
+            clearAutoQueueTimer();
             clearSendCooldown();
             lastOutgoingIdRef.current = null;
             setWebrtcInitiator(event.data.initiator);
@@ -159,30 +231,18 @@ export function useChat() {
 
           case "chat.partner_left":
             setWebrtcInitiator(null);
+            store.setRoomId(null);
             store.setConnectionState("partner_left");
-            store.addMessage({
-              id: nanoid(),
-              sender: "system",
-              content: "Stranger has disconnected. Finding you a new partner in 2 seconds...",
-              timestamp: new Date(),
-            });
-
-            clearAutoQueueTimer();
-            autoQueueTimerRef.current = window.setTimeout(() => {
-              autoQueueTimerRef.current = null;
-              if (!wsClientRef.current) return;
-              const { interests } = useAppStore.getState();
-              store.setConnectionState("finding");
-              store.clearMessages();
-              wsClientRef.current.send({
-                type: "queue.join",
-                data: { interests },
-              });
-            }, 2000);
+            scheduleAutoQueue(
+              "Stranger has disconnected. Finding you a new partner in 2 seconds..."
+            );
             break;
 
           case "chat.ended":
+            markQueueSettled();
+            clearAutoQueueTimer();
             setWebrtcInitiator(null);
+            store.setRoomId(null);
             store.setConnectionState("idle");
             break;
 
@@ -237,15 +297,30 @@ export function useChat() {
       return null;
     }
     return wsClientRef.current;
-  }, [store, clearAutoQueueTimer, clearSendCooldown, startSendCooldown]);
+  }, [
+    store,
+    scheduleAutoQueue,
+    markQueueSettled,
+    clearAutoQueueTimer,
+    clearSendCooldown,
+    startSendCooldown,
+  ]);
 
   const joinQueue = useCallback(
     async (interests?: string[]) => {
+      joiningRef.current = true;
       try {
+        clearAutoQueueTimer();
+        clearReconnectSoon();
+        store.setConnectionState("finding");
         const client = await initWS();
-        if (!client) return;
+        if (!client) {
+          joiningRef.current = false;
+          return;
+        }
 
         setWebrtcInitiator(null);
+        store.setRoomId(null);
         store.setConnectionState("finding");
         store.clearMessages();
         client.send({
@@ -254,11 +329,14 @@ export function useChat() {
         });
       } catch (err) {
         console.error("Failed to join queue:", err);
+        joiningRef.current = false;
         store.setConnectionState("error");
       }
     },
-    [initWS, store]
+    [initWS, store, clearAutoQueueTimer, clearReconnectSoon]
   );
+
+  joinQueueRef.current = joinQueue;
 
   const sendMessage = useCallback(
     (content: string) => {
@@ -290,30 +368,37 @@ export function useChat() {
 
   const nextChat = useCallback(() => {
     if (!wsClientRef.current) return;
+    joiningRef.current = true;
+    clearReconnectSoon();
     clearAutoQueueTimer();
     clearSendCooldown();
     lastOutgoingIdRef.current = null;
     setWebrtcInitiator(null);
+    store.setRoomId(null);
     store.setConnectionState("finding");
     store.clearMessages();
     wsClientRef.current.send({ type: "chat.next" });
-  }, [store, clearAutoQueueTimer, clearSendCooldown]);
+  }, [store, clearAutoQueueTimer, clearReconnectSoon, clearSendCooldown]);
 
   const stopChat = useCallback(() => {
     if (!wsClientRef.current) return;
+    joiningRef.current = false;
+    clearReconnectSoon();
     clearAutoQueueTimer();
     clearSendCooldown();
     lastOutgoingIdRef.current = null;
     setWebrtcInitiator(null);
     wsClientRef.current.send({ type: "chat.stop" });
+    store.setRoomId(null);
     store.setConnectionState("idle");
-  }, [store, clearAutoQueueTimer, clearSendCooldown]);
+  }, [store, clearAutoQueueTimer, clearReconnectSoon, clearSendCooldown]);
 
   const blockPartner = useCallback(() => {
     if (!wsClientRef.current) return;
     clearAutoQueueTimer();
     setWebrtcInitiator(null);
     wsClientRef.current.send({ type: "chat.block" });
+    store.setRoomId(null);
     store.setConnectionState("idle");
     store.addMessage({
       id: nanoid(),
@@ -332,6 +417,7 @@ export function useChat() {
         type: "chat.report",
         data: { category, description },
       });
+      store.setRoomId(null);
       store.setConnectionState("idle");
       store.addMessage({
         id: nanoid(),
@@ -347,6 +433,7 @@ export function useChat() {
     return () => {
       if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
       if (autoQueueTimerRef.current) clearTimeout(autoQueueTimerRef.current);
+      if (reconnectSoonRef.current) clearTimeout(reconnectSoonRef.current);
       if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
     };
   }, []);

@@ -1,9 +1,21 @@
-import React, { useEffect, useRef } from "react";
+import React, { memo, useCallback, useEffect, useRef, useState } from "react";
 import { Mic, MicOff, Video, VideoOff, Loader2 } from "lucide-react";
 import type { VideoStatus } from "../../hooks/useWebRTC.js";
+import { ViewSwitcher, type VideoPrimaryView } from "./ViewSwitcher.js";
 
 const mediaToggleClass =
-  "inline-flex size-8 shrink-0 items-center justify-center rounded-sm border border-[var(--sx-on-primary)] bg-transparent text-[var(--sx-on-primary)] transition-colors hover:bg-[var(--sx-on-primary)] hover:text-[var(--sx-ink)] disabled:pointer-events-none disabled:opacity-40";
+  "inline-flex size-9 shrink-0 items-center justify-center rounded-sm border border-white/30 bg-black/50 text-white backdrop-blur-sm transition-colors hover:bg-white/20 disabled:pointer-events-none disabled:opacity-40";
+
+const pipClass =
+  "absolute right-3 top-[7.25rem] z-10 aspect-video cursor-pointer overflow-hidden shadow-xl transition-[width,height,max-width] duration-200 lg:bottom-3 lg:right-3 lg:top-auto";
+
+const pipCollapsedClass = "w-28 sm:w-32 lg:h-[22%] lg:w-[28%] lg:min-h-[72px] lg:min-w-[100px] lg:max-w-[180px] lg:aspect-auto";
+
+const pipExpandedClass =
+  "w-[min(18rem,70vw)] sm:w-72 lg:h-[42%] lg:w-[42%] lg:min-h-[140px] lg:min-w-[200px] lg:max-w-[320px] lg:aspect-auto";
+
+const primaryClass = "absolute inset-0";
+
 interface VideoPanelProps {
   localStream: MediaStream | null;
   remoteStream: MediaStream | null;
@@ -14,15 +26,18 @@ interface VideoPanelProps {
   partnerMicOn: boolean;
   onToggleCamera: () => void;
   onToggleMic: () => void;
+  remoteEmptyLabel?: string;
 }
 
-function VideoTile({
+const VideoTile = memo(function VideoTile({
   stream,
   muted,
   mirror,
   label,
   emptyLabel,
   showOffOverlay,
+  framed = false,
+  switcher,
 }: {
   stream: MediaStream | null;
   muted?: boolean;
@@ -30,44 +45,54 @@ function VideoTile({
   label: string;
   emptyLabel: string;
   showOffOverlay?: boolean;
+  framed?: boolean;
+  switcher?: React.ReactNode;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     const el = videoRef.current;
     if (!el) return;
-    el.srcObject = stream;
+    if (el.srcObject !== stream) {
+      el.srcObject = stream;
+    }
   }, [stream]);
 
   return (
-    <div className="relative h-full w-full overflow-hidden rounded-sm border border-[var(--sx-hairline-on-dark)] bg-[var(--sx-canvas-night-soft)]">
-      {stream ? (
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          muted={muted}
-          className={`h-full w-full object-cover ${mirror ? "scale-x-[-1]" : ""} ${
-            showOffOverlay ? "opacity-0" : "opacity-100"
-          }`}
-        />
-      ) : null}
+    <div
+      className={`relative h-full w-full overflow-hidden bg-[var(--sx-canvas-night-soft)] ${
+        framed ? "rounded-sm border border-[var(--sx-hairline-on-dark)]" : ""
+      }`}
+    >
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted={muted}
+        className={`h-full w-full object-cover ${mirror ? "scale-x-[-1]" : ""} ${
+          stream && !showOffOverlay ? "opacity-100" : "opacity-0"
+        }`}
+      />
 
       {(!stream || showOffOverlay) && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-[var(--sx-canvas-night-soft)] text-[var(--sx-on-primary-mute)]">
-          <VideoOff className="h-8 w-8 opacity-60" />
-          <span className="text-xs font-medium">{emptyLabel}</span>
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-[var(--sx-canvas-night-soft)] px-1 text-center text-[var(--sx-on-primary-mute)] lg:gap-2">
+          <VideoOff className={`opacity-60 ${framed ? "h-5 w-5" : "h-8 w-8"}`} />
+          <span className={`font-medium leading-tight ${framed ? "text-[10px]" : "text-xs"}`}>
+            {emptyLabel}
+          </span>
         </div>
       )}
 
       <span className="absolute bottom-2 left-2 rounded-md bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-zinc-200 backdrop-blur-sm">
         {label}
       </span>
+
+      {switcher ? <div className="absolute right-1 top-1 z-10">{switcher}</div> : null}
     </div>
   );
-}
+});
 
-export function VideoPanel({
+export const VideoPanel = memo(function VideoPanel({
   localStream,
   remoteStream,
   status,
@@ -77,7 +102,21 @@ export function VideoPanel({
   partnerMicOn,
   onToggleCamera,
   onToggleMic,
+  remoteEmptyLabel,
 }: VideoPanelProps) {
+  const [primaryView, setPrimaryView] = useState<VideoPrimaryView>("remote");
+  const [pipExpanded, setPipExpanded] = useState(false);
+  const selfPrimary = primaryView === "self";
+
+  const switchView = useCallback(() => {
+    setPrimaryView((current) => (current === "remote" ? "self" : "remote"));
+    setPipExpanded(false);
+  }, []);
+
+  const togglePipSize = useCallback(() => {
+    setPipExpanded((open) => !open);
+  }, []);
+
   const statusMessage =
     status === "requesting"
       ? "Requesting camera and microphone..."
@@ -90,76 +129,90 @@ export function VideoPanel({
             : null;
 
   return (
-    <div className="shrink-0 space-y-2 border-b border-[var(--sx-hairline-on-dark)] p-3">
-      <div className="relative aspect-video max-h-[40vh] w-full overflow-hidden rounded-sm">
+    <div className="relative h-full w-full">
+      <div
+        className={`${selfPrimary ? pipClass : primaryClass} ${
+          selfPrimary ? (pipExpanded ? pipExpandedClass : pipCollapsedClass) : ""
+        }`}
+        onClick={selfPrimary ? togglePipSize : undefined}
+      >
         <VideoTile
           stream={remoteStream}
           label={partnerMicOn ? "Stranger" : "Stranger (muted)"}
           emptyLabel={
-            status === "connected" && !partnerCameraOn
-              ? "Stranger camera off"
-              : statusMessage || "Waiting for stranger video..."
+            remoteEmptyLabel
+              ? remoteEmptyLabel
+              : status === "connected" && !partnerCameraOn
+                ? "Stranger camera off"
+                : statusMessage || "Waiting for stranger video..."
           }
-          showOffOverlay={status === "connected" && !partnerCameraOn}
+          showOffOverlay={
+            !!remoteEmptyLabel || (status === "connected" && !partnerCameraOn)
+          }
+          framed={selfPrimary}
+          switcher={selfPrimary ? <ViewSwitcher primaryView={primaryView} onSwitch={switchView} /> : undefined}
         />
+      </div>
 
-        <div className="absolute bottom-3 right-3 h-[28%] w-[28%] min-w-[100px] min-h-[72px] max-w-[180px] shadow-xl">
-          <VideoTile
-            stream={localStream}
-            muted
-            mirror
-            label="You"
-            emptyLabel={
-              status === "permission_denied"
-                ? "Camera blocked"
-                : cameraOn
-                  ? "Starting camera..."
-                  : "Camera off"
-            }
-            showOffOverlay={!!localStream && !cameraOn}
-          />
-        </div>
+      <div
+        className={`${selfPrimary ? primaryClass : pipClass} ${
+          !selfPrimary ? (pipExpanded ? pipExpandedClass : pipCollapsedClass) : ""
+        }`}
+        onClick={!selfPrimary ? togglePipSize : undefined}
+      >
+        <VideoTile
+          stream={localStream}
+          muted
+          mirror
+          framed={!selfPrimary}
+          label="You"
+          emptyLabel={
+            status === "permission_denied"
+              ? "Camera blocked"
+              : cameraOn
+                ? "Starting camera..."
+                : "Camera off"
+          }
+          showOffOverlay={!!localStream && !cameraOn}
+          switcher={!selfPrimary ? <ViewSwitcher primaryView={primaryView} onSwitch={switchView} /> : undefined}
+        />
+      </div>
 
-        {(status === "requesting" || status === "connecting") && (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/20">
-            <div className="flex items-center gap-2 rounded-full bg-black/60 px-3 py-1.5 text-xs text-zinc-200 backdrop-blur-sm">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              {statusMessage}
-            </div>
+      <div className="absolute left-3 top-[7.25rem] z-10 flex items-center gap-2 lg:bottom-3 lg:top-auto">
+        <button
+          type="button"
+          className={mediaToggleClass}
+          onClick={onToggleMic}
+          disabled={!localStream}
+          aria-label={micOn ? "Mute microphone" : "Unmute microphone"}
+        >
+          {micOn ? <Mic className="size-4" /> : <MicOff className="size-4" />}
+        </button>
+        <button
+          type="button"
+          className={mediaToggleClass}
+          onClick={onToggleCamera}
+          disabled={!localStream}
+          aria-label={cameraOn ? "Turn camera off" : "Turn camera on"}
+        >
+          {cameraOn ? <Video className="size-4" /> : <VideoOff className="size-4" />}
+        </button>
+      </div>
+
+      {(status === "requesting" || status === "connecting") && (
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/20">
+          <div className="flex items-center gap-2 rounded-full bg-black/60 px-3 py-1.5 text-xs text-zinc-200 backdrop-blur-sm">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            {statusMessage}
           </div>
-        )}
-      </div>
-
-      <div className="flex items-center justify-between gap-2">
-        <p className="truncate text-[11px] text-[var(--sx-on-primary-mute)]">
-          {status === "permission_denied" || status === "error"
-            ? statusMessage
-            : status === "connected"
-              ? "Live video connected"
-              : "Setting up live video..."}
-        </p>
-
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            className={mediaToggleClass}
-            onClick={onToggleMic}
-            disabled={!localStream}
-            aria-label={micOn ? "Mute microphone" : "Unmute microphone"}
-          >
-            {micOn ? <Mic className="size-3.5" /> : <MicOff className="size-3.5" />}
-          </button>
-          <button
-            type="button"
-            className={mediaToggleClass}
-            onClick={onToggleCamera}
-            disabled={!localStream}
-            aria-label={cameraOn ? "Turn camera off" : "Turn camera on"}
-          >
-            {cameraOn ? <Video className="size-3.5" /> : <VideoOff className="size-3.5" />}
-          </button>
         </div>
-      </div>
+      )}
+
+      {(status === "permission_denied" || status === "error") && (
+        <div className="pointer-events-none absolute left-3 top-14 z-10 max-w-xs rounded-sm bg-black/60 px-3 py-1.5 text-[11px] text-zinc-200 backdrop-blur-sm lg:top-16">
+          {statusMessage}
+        </div>
+      )}
     </div>
   );
-}
+});

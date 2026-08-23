@@ -23,13 +23,16 @@ export async function getUserState(sessionId: string): Promise<SessionPresence> 
 export async function setUserState(
   sessionId: string,
   state: UserState,
-  details?: { roomId?: string; queuedAt?: number }
+  details?: { roomId?: string | null; queuedAt?: number }
 ) {
   const current = await getUserState(sessionId);
   const updated: SessionPresence = {
     ...current,
     state,
-    roomId: details?.roomId !== undefined ? details.roomId : current.roomId,
+    roomId:
+      details && "roomId" in details
+        ? details.roomId ?? undefined
+        : current.roomId,
     queuedAt: details?.queuedAt !== undefined ? details.queuedAt : current.queuedAt,
     lastSeenAt: Date.now(),
   };

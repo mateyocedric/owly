@@ -42,7 +42,7 @@ export function MessageInput({
   return (
     <form
       onSubmit={handleSubmit}
-      className="sx-light-surface !rounded-none !border-0 !border-t border-t-[var(--sx-hairline-on-light)] !p-3"
+      className="mx-3 rounded-sm border border-white/20 bg-black/50 p-2 backdrop-blur-md lg:mx-0 lg:rounded-none lg:border-0 lg:border-t lg:border-t-[var(--sx-hairline-on-dark)] lg:bg-transparent lg:p-3 lg:backdrop-blur-none"
     >
       <div className="flex items-center gap-2">
         <Input
@@ -53,7 +53,7 @@ export function MessageInput({
           disabled={disabled}
           placeholder={placeholder}
           maxLength={2000}
-          className="flex-1"
+          className="flex-1 border-white/20 bg-black/30 text-white placeholder:text-white/50 lg:border-[var(--sx-hairline-on-dark)] lg:bg-transparent lg:text-[var(--sx-on-primary)] lg:placeholder:text-[var(--sx-on-primary-mute)]"
         />
         <Button type="submit" disabled={!text.trim() || cannotSend} size="default">
           {isCoolingDown ? (

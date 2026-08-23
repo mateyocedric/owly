@@ -1,13 +1,18 @@
 import type { ClientEvent, ServerEvent } from "@owly/shared";
 
 type EventListener = (event: ServerEvent) => void;
+type CloseListener = () => void;
 
 export class OwlyWSClient {
   private ws: WebSocket | null = null;
   private listeners: Set<EventListener> = new Set();
+  private closeListeners: Set<CloseListener> = new Set();
   private reconnectTimer: number | null = null;
   private pingInterval: number | null = null;
   private token: string | null = null;
+  private manualClose = false;
+  private didOpen = false;
+  private connectPromise: Promise<void> | null = null;
 
   constructor(token?: string) {
     if (token) this.token = token;
@@ -18,12 +23,22 @@ export class OwlyWSClient {
   }
 
   public connect(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-        resolve();
-        return;
-      }
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      return Promise.resolve();
+    }
 
+    if (
+      this.connectPromise &&
+      this.ws &&
+      this.ws.readyState === WebSocket.CONNECTING
+    ) {
+      return this.connectPromise;
+    }
+
+    this.manualClose = false;
+    this.didOpen = false;
+
+    this.connectPromise = new Promise((resolve, reject) => {
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const host = window.location.host;
       const url = `${protocol}//${host}/ws${this.token ? `?token=${this.token}` : ""}`;
@@ -31,6 +46,8 @@ export class OwlyWSClient {
       this.ws = new WebSocket(url);
 
       this.ws.onopen = () => {
+        this.didOpen = true;
+        this.connectPromise = null;
         this.startHeartbeat();
         resolve();
       };
@@ -45,13 +62,23 @@ export class OwlyWSClient {
       };
 
       this.ws.onerror = (err) => {
+        this.connectPromise = null;
         reject(err);
       };
 
       this.ws.onclose = () => {
         this.stopHeartbeat();
+        const shouldNotify = this.didOpen && !this.manualClose;
+        this.didOpen = false;
+        this.connectPromise = null;
+        this.ws = null;
+        if (shouldNotify) {
+          for (const listener of this.closeListeners) listener();
+        }
       };
     });
+
+    return this.connectPromise;
   }
 
   public send(event: ClientEvent) {
@@ -65,6 +92,11 @@ export class OwlyWSClient {
   public on(listener: EventListener) {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
+  }
+
+  public onClose(listener: CloseListener) {
+    this.closeListeners.add(listener);
+    return () => this.closeListeners.delete(listener);
   }
 
   private emit(event: ServerEvent) {
@@ -85,9 +117,15 @@ export class OwlyWSClient {
       clearInterval(this.pingInterval);
       this.pingInterval = null;
     }
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
   }
 
   public disconnect() {
+    this.manualClose = true;
+    this.connectPromise = null;
     this.stopHeartbeat();
     if (this.ws) {
       this.ws.close();

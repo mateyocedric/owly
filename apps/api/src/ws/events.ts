@@ -234,7 +234,7 @@ async function relayToPartner(
 async function handleQueueLeave(ws: ServerWebSocket<WSContextData>) {
   const { sessionId } = ws.data;
   await removeFromQueue(sessionId, ws.data.interests);
-  await setUserState(sessionId, "idle");
+  await setUserState(sessionId, "idle", { roomId: null });
   ws.send(JSON.stringify({ type: "chat.ended", data: { reason: "stop" } }));
   logEvent({ eventType: "queue_leave", sessionId });
 }
@@ -386,7 +386,7 @@ async function handleChatStop(ws: ServerWebSocket<WSContextData>) {
     await endCurrentRoom(roomId, sessionId, "stop");
   }
   await removeFromQueue(sessionId, ws.data.interests);
-  await setUserState(sessionId, "idle");
+  await setUserState(sessionId, "idle", { roomId: null });
   ws.send(JSON.stringify({ type: "chat.ended", data: { reason: "stop" } }));
 }
 
@@ -408,7 +408,7 @@ async function handleChatReport(
 
     // End chat room on report
     await endCurrentRoom(roomId, sessionId, "report");
-    await setUserState(sessionId, "idle");
+    await setUserState(sessionId, "idle", { roomId: null });
 
     ws.send(
       JSON.stringify({
@@ -439,7 +439,7 @@ async function handleChatBlock(ws: ServerWebSocket<WSContextData>) {
   }
 
   await endCurrentRoom(roomId, sessionId, "stop");
-  await setUserState(sessionId, "idle");
+  await setUserState(sessionId, "idle", { roomId: null });
   ws.send(JSON.stringify({ type: "chat.ended", data: { reason: "stop" } }));
 }
 
@@ -458,7 +458,7 @@ export async function endCurrentRoom(
 
   const partnerId = room.participants.find((p) => p !== initiatorSessionId);
   if (partnerId) {
-    await setUserState(partnerId, "idle");
+    await setUserState(partnerId, "idle", { roomId: null });
     const partnerWs = connectionManager.get(partnerId);
     if (partnerWs) {
       partnerWs.data.roomId = undefined;

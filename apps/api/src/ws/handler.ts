@@ -12,7 +12,7 @@ import { logEvent } from "../lib/logger.js";
 export const websocketHandler: WebSocketHandler<WSContextData> = {
   async open(ws: ServerWebSocket<WSContextData>) {
     connectionManager.register(ws.data.sessionId, ws);
-    await setUserState(ws.data.sessionId, "idle");
+    await setUserState(ws.data.sessionId, "idle", { roomId: null });
 
     logEvent({
       eventType: "ws_connected",
@@ -38,7 +38,7 @@ export const websocketHandler: WebSocketHandler<WSContextData> = {
       await endCurrentRoom(roomId, sessionId, "disconnect");
     }
 
-    await setUserState(sessionId, "disconnected");
+    await setUserState(sessionId, "disconnected", { roomId: null });
 
     logEvent({
       eventType: "ws_disconnected",
