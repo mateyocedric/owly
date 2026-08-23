@@ -26,6 +26,14 @@ async function seed() {
   if (existing) {
     console.log(`ℹ️  Admin user "${username}" already exists, skipping.`);
   } else {
+    if (
+      process.env["NODE_ENV"] === "production" &&
+      password === "change-me-admin-password"
+    ) {
+      throw new Error(
+        "Refusing to create the default admin password in production. Set ADMIN_PASSWORD."
+      );
+    }
     await AdminUser.create({
       username,
       passwordHash,

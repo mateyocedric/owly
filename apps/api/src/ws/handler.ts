@@ -10,6 +10,7 @@ import { removeFromQueue } from "../matchmaking/queue.js";
 import { logEvent } from "../lib/logger.js";
 
 export const websocketHandler: WebSocketHandler<WSContextData> = {
+  idleTimeout: 120,
   async open(ws: ServerWebSocket<WSContextData>) {
     connectionManager.register(ws.data.sessionId, ws);
     await setUserState(ws.data.sessionId, "idle", { roomId: null });

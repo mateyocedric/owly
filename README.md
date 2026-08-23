@@ -65,6 +65,8 @@ owl/
 │   └── ui/           # Reusable UI component library (shadcn-style)
 ├── e2e/              # Playwright end-to-end user journey tests
 ├── docker-compose.yml# Local MongoDB 7 and Redis 7 services
+├── Dockerfile         # Production API + web image (Railway)
+├── Dockerfile.worker  # Production worker image (Railway)
 └── package.json      # Workspace root manifest
 ```
 
@@ -107,6 +109,51 @@ bun run dev:worker
 ```
 
 Open [http://localhost:5173](http://localhost:5173) in your browser.
+
+---
+
+## 🚂 Deploy on Railway
+
+Production runs as two long-lived services so WebSockets stay open: **owly** (serves the Vite UI, REST, `/ws`, and an in-container Redis) and **worker** (cleanup jobs), plus Railway **MongoDB**.
+
+Hobby plan limits: one volume (MongoDB uses it) and a small service cap, so Redis is not a separate Railway database. Matchmaking queues live in Redis inside the API container and reset if that service restarts.
+
+### 1. Install the CLI and log in
+
+```bash
+npm i -g @railway/cli
+railway login
+railway link
+```
+
+### 2. Set secrets on **owly** (required before the first boot)
+
+```bash
+railway variable set SESSION_SECRET="$(bun -e "console.log(crypto.randomUUID()+crypto.randomUUID())")" --service owly
+railway variable set ADMIN_JWT_SECRET="$(bun -e "console.log(crypto.randomUUID()+crypto.randomUUID())")" --service owly
+railway variable set ADMIN_USERNAME=admin --service owly
+railway variable set ADMIN_PASSWORD="your-strong-admin-password" --service owly
+railway variable set MONGODB_URI='${{MongoDB.MONGO_URL}}' --service owly
+railway variable set NODE_ENV=production --service owly
+
+railway variable set MONGODB_URI='${{MongoDB.MONGO_URL}}' --service worker
+railway variable set NODE_ENV=production --service worker
+railway variable set RAILWAY_DOCKERFILE_PATH=Dockerfile.worker --service worker
+```
+
+Leave `COOKIE_DOMAIN` unset so the session cookie is host-only on `*.up.railway.app`.
+
+### 3. Deploy and attach a public domain
+
+```bash
+railway up --service owly
+railway up --service worker --detach
+railway domain --service owly
+```
+
+The API image seeds the admin user and interest tags on first start. Open the generated HTTPS URL — `/api` and `/ws` are same-origin, so the existing frontend paths keep working.
+
+To ship later commits from GitHub, connect the `mateyocedric/owly` repo in the Railway dashboard (both services, root directory empty).
 
 ---
 

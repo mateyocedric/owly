@@ -1,11 +1,11 @@
 import { z } from "zod";
 
 export const envSchema = z.object({
-  // MongoDB
-  MONGODB_URI: z.string().url(),
+  // MongoDB (plain string so passwords with special chars still parse)
+  MONGODB_URI: z.string().min(1),
 
   // Redis
-  REDIS_URL: z.string().url(),
+  REDIS_URL: z.string().min(1),
 
   // API Server
   API_PORT: z.coerce.number().int().positive().default(3001),
@@ -13,6 +13,8 @@ export const envSchema = z.object({
   NODE_ENV: z
     .enum(["development", "production", "test"])
     .default("development"),
+  // Comma-separated browser origins. Empty = reflect the request origin.
+  CORS_ORIGINS: z.string().optional().default(""),
 
   // Session & Security
   SESSION_SECRET: z.string().min(32),

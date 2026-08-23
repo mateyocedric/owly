@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import { Hono } from "hono";
 import { connectDB } from "@owly/database";
 import { env } from "./env.js";
@@ -11,6 +12,7 @@ import { interestsRouter } from "./routes/interests.js";
 import { adminRouter } from "./routes/admin/index.js";
 import { websocketHandler } from "./ws/handler.js";
 import { validateSessionToken } from "./services/session.js";
+import { spaFallback } from "./static.js";
 import type { WSContextData } from "./ws/connection-manager.js";
 
 // Initialize Database connection
@@ -29,6 +31,12 @@ app.route("/api", sessionRouter);
 app.route("/api", reportRouter);
 app.route("/api", interestsRouter);
 app.route("/api/admin", adminRouter);
+
+if (env.NODE_ENV === "production") {
+  const distDir =
+    process.env["WEB_DIST_PATH"] || join(import.meta.dir, "../../web/dist");
+  app.use("*", spaFallback(distDir));
+}
 
 // Start Bun Server with native WebSocket support
 const server = Bun.serve<WSContextData>({
