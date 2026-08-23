@@ -56,7 +56,7 @@ export function UserManagement({ sessions, onModerate }: UserManagementProps) {
             <select
               value={action}
               onChange={(e) => setAction(e.target.value)}
-              className="w-full h-11 bg-zinc-900 border border-zinc-700 rounded-lg px-3 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
+              className="w-full h-11 bg-zinc-900 border border-zinc-700 rounded-lg px-3 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400"
             >
               <option value="warning">Issue Warning</option>
               <option value="temporary_ban">Temporary Ban (24h)</option>
@@ -125,7 +125,7 @@ export function UserManagement({ sessions, onModerate }: UserManagementProps) {
                     onClick={() => {
                       setTargetId(s.id);
                     }}
-                    className="text-violet-400 hover:text-violet-300 underline text-xs"
+                    className="text-zinc-300 hover:text-white underline text-xs"
                   >
                     Select
                   </button>

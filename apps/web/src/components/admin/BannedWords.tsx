@@ -54,7 +54,7 @@ export function BannedWordsConfig({ token }: BannedWordsProps) {
     <div className="p-6 rounded-xl border border-zinc-800 bg-zinc-900/60 space-y-6">
       <div>
         <h4 className="text-base font-bold text-white flex items-center gap-2">
-          <ShieldCheck className="h-5 w-5 text-violet-400" />
+          <ShieldCheck className="h-5 w-5 text-zinc-400" />
           Restricted Words & Safety Patterns
         </h4>
         <p className="text-xs text-zinc-400 mt-1">
@@ -105,7 +105,7 @@ export function BannedWordsConfig({ token }: BannedWordsProps) {
         <Button
           onClick={handleSave}
           disabled={saving}
-          className="bg-violet-600 hover:bg-violet-500 text-white font-semibold"
+          className="font-semibold"
         >
           <Save className="h-4 w-4 mr-1.5" />
           {saving ? "Saving..." : "Save Changes"}

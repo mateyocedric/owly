@@ -78,7 +78,7 @@ export function ReportsList({
                       className={`font-semibold shrink-0 ${
                         msg.sender === "partner"
                           ? "text-red-400"
-                          : "text-violet-400"
+                          : "text-zinc-300"
                       }`}
                     >
                       [{msg.sender === "partner" ? "Reported" : "Reporter"}]:

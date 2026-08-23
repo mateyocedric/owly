@@ -7,16 +7,16 @@ colors:
   primary: "#000000"
   ink: "#000000"
   on-primary: "#ffffff"
-  on-primary-mute: "#f0f0fa"
+  on-primary-mute: "#f0f0f0"
   canvas-night: "#000000"
   canvas-night-soft: "#0a0a0a"
   canvas-light: "#ffffff"
-  canvas-cool: "#f0f0fa"
-  hairline-on-dark: "#3a3a3f"
-  hairline-on-light: "#e0e0e8"
+  canvas-cool: "#f0f0f0"
+  hairline-on-dark: "#3a3a3a"
+  hairline-on-light: "#e0e0e0"
   link-on-dark: "#ffffff"
   link-blue-fallback: "#0000ee"
-  ink-mute: "#5a5a5f"
+  ink-mute: "#5a5a5a"
 
 typography:
   display-xxl:
@@ -176,15 +176,15 @@ The brand has no accent colors. Black and white do all the chromatic work; photo
 - **Canvas Night** (`{colors.canvas-night}` — `#000000`): Default marketing canvas. Pure black, no tint.
 - **Canvas Night Soft** (`{colors.canvas-night-soft}` — `#0a0a0a`): Barely-lifted near-black for content sections that need a subtle separation from the pure-black hero.
 - **Canvas Light** (`{colors.canvas-light}` — `#ffffff`): The shop site's product surface.
-- **Canvas Cool** (`{colors.canvas-cool}` — `#f0f0fa`): A pale cool-blue-white used as the secondary surface on the shop site and as the hover-canvas of certain ghost buttons.
-- **Hairline on Dark** (`{colors.hairline-on-dark}` — `#3a3a3f`): 1px borders on dark surface chrome.
-- **Hairline on Light** (`{colors.hairline-on-light}` — `#e0e0e8`): Borders on shop-site cards.
+- **Canvas Cool** (`{colors.canvas-cool}` — `#f0f0f0`): A pale neutral off-white used as the secondary surface on the shop site and as the hover-canvas of certain ghost buttons.
+- **Hairline on Dark** (`{colors.hairline-on-dark}` — `#3a3a3a`): 1px borders on dark surface chrome.
+- **Hairline on Light** (`{colors.hairline-on-light}` — `#e0e0e0`): Borders on shop-site cards.
 
 ### Text
 - **On Primary** (`{colors.on-primary}` — `#ffffff`): Default text on dark canvas; the dominant text color across the marketing site.
-- **On Primary Mute** (`{colors.on-primary-mute}` — `#f0f0fa`): Slightly cooled-white used for secondary text on dark surfaces — barely distinguishable from `{colors.on-primary}` but enough to suggest a hierarchy.
+- **On Primary Mute** (`{colors.on-primary-mute}` — `#f0f0f0`): Slightly off-white used for secondary text on dark surfaces — barely distinguishable from `{colors.on-primary}` but enough to suggest a hierarchy.
 - **Ink** (`{colors.ink}` — `#000000`): Default text on light surfaces (shop site).
-- **Ink Mute** (`{colors.ink-mute}` — `#5a5a5f`): Secondary text on light surfaces.
+- **Ink Mute** (`{colors.ink-mute}` — `#5a5a5a`): Secondary text on light surfaces.
 
 ### Link
 - **Link on Dark** (`{colors.link-on-dark}` — `#ffffff`): Underlined inline link on dark canvas.
