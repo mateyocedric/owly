@@ -1,0 +1,21 @@
+{
+  "name": "@owly/worker",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "start": "bun src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@owly/database": "workspace:*",
+    "@owly/shared": "workspace:*",
+    "ioredis": "^5.4.2",
+    "pino": "^9.6.0"
+  },
+  "devDependencies": {
+    "@owly/config": "workspace:*",
+    "@types/bun": "latest"
+  }
+}

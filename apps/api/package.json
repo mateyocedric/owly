@@ -1,0 +1,29 @@
+{
+  "name": "@owly/api",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "start": "bun src/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@owly/database": "workspace:*",
+    "@owly/shared": "workspace:*",
+    "hono": "^4.7.0",
+    "ioredis": "^5.4.2",
+    "jose": "^6.0.0",
+    "mongoose": "^8.9.0",
+    "nanoid": "^5.0.9",
+    "pino": "^9.6.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@owly/config": "workspace:*",
+    "@types/bun": "latest",
+    "vitest": "^3.0.0"
+  }
+}

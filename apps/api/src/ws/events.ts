@@ -1,0 +1,476 @@
+import type { ServerWebSocket } from "bun";
+import {
+  clientEventSchema,
+  type ClientEvent,
+  type ServerEvent,
+  RATE_LIMITS,
+} from "@owly/shared";
+import { connectionManager, type WSContextData } from "./connection-manager.js";
+import {
+  getUserState,
+  setUserState,
+} from "../matchmaking/state-machine.js";
+import {
+  addToQueue,
+  removeFromQueue,
+  getQueuePosition,
+} from "../matchmaking/queue.js";
+import { tryAtomicMatch } from "../matchmaking/matcher.js";
+import { tryInterestMatch } from "../matchmaking/interest-matcher.js";
+import {
+  createChatRoom,
+  getRoomCache,
+  appendMessageToRoomCache,
+  closeChatRoom,
+} from "../services/room.js";
+import {
+  checkContentModeration,
+  submitModerationReport,
+} from "../services/moderation.js";
+import { blockUser } from "../services/block.js";
+import { logEvent } from "../lib/logger.js";
+
+export async function handleClientEvent(
+  ws: ServerWebSocket<WSContextData>,
+  rawMessage: string
+) {
+  let parsed: ClientEvent;
+  try {
+    const json = JSON.parse(rawMessage);
+    const result = clientEventSchema.safeParse(json);
+    if (!result.success) {
+      ws.send(
+        JSON.stringify({
+          type: "error",
+          data: { code: "INVALID_EVENT", message: "Invalid event structure" },
+        })
+      );
+      return;
+    }
+    parsed = result.data;
+  } catch {
+    ws.send(
+      JSON.stringify({
+        type: "error",
+        data: { code: "MALFORMED_JSON", message: "Payload must be valid JSON" },
+      })
+    );
+    return;
+  }
+
+  const { sessionId } = ws.data;
+
+  switch (parsed.type) {
+    case "ping": {
+      ws.send(JSON.stringify({ type: "pong" }));
+      break;
+    }
+
+    case "queue.join": {
+      await handleQueueJoin(ws, parsed.data?.interests);
+      break;
+    }
+
+    case "queue.leave": {
+      await handleQueueLeave(ws);
+      break;
+    }
+
+    case "chat.message": {
+      await handleChatMessage(ws, parsed.data.content);
+      break;
+    }
+
+    case "chat.typing": {
+      await handleChatTyping(ws);
+      break;
+    }
+
+    case "chat.next": {
+      await handleChatNext(ws);
+      break;
+    }
+
+    case "chat.stop": {
+      await handleChatStop(ws);
+      break;
+    }
+
+    case "chat.report": {
+      await handleChatReport(ws, parsed.data.category, parsed.data.description);
+      break;
+    }
+
+    case "chat.block": {
+      await handleChatBlock(ws);
+      break;
+    }
+
+    case "webrtc.signal": {
+      await relayToPartner(ws, {
+        type: "webrtc.signal",
+        data: parsed.data,
+      });
+      break;
+    }
+
+    case "video.state": {
+      await relayToPartner(ws, {
+        type: "video.state",
+        data: parsed.data,
+      });
+      break;
+    }
+  }
+}
+
+async function handleQueueJoin(
+  ws: ServerWebSocket<WSContextData>,
+  interests?: string[]
+) {
+  const { sessionId } = ws.data;
+  const state = await getUserState(sessionId);
+
+  // If already queued, notify position
+  if (state.state === "queued") {
+    const pos = await getQueuePosition(sessionId);
+    ws.send(JSON.stringify({ type: "queue.waiting", data: { position: pos } }));
+    return;
+  }
+
+  // If currently in a room, leave it first
+  if (state.state === "matched" && ws.data.roomId) {
+    await endCurrentRoom(ws.data.roomId, sessionId, "next");
+  }
+
+  ws.data.interests = interests || [];
+  await setUserState(sessionId, "queued", { queuedAt: Date.now() });
+  await addToQueue(sessionId, ws.data.interests);
+
+  const pos = await getQueuePosition(sessionId);
+  ws.send(JSON.stringify({ type: "queue.waiting", data: { position: pos } }));
+
+  logEvent({ eventType: "queue_join", sessionId, details: { interests } });
+
+  // 1. Try interest-based match first if interests provided
+  if (ws.data.interests.length > 0) {
+    const interestMatch = await tryInterestMatch(sessionId, ws.data.interests);
+    if (interestMatch) {
+      await establishMatch(interestMatch.pair, interestMatch.commonInterests);
+      return;
+    }
+  }
+
+  // 2. Try atomic general match
+  const generalMatch = await tryAtomicMatch();
+  if (generalMatch) {
+    await establishMatch(generalMatch);
+  }
+}
+
+async function establishMatch(
+  pair: [string, string],
+  commonInterests?: string[]
+) {
+  const [u1, u2] = pair;
+
+  // Clean up queues for both users
+  await removeFromQueue(u1);
+  await removeFromQueue(u2);
+
+  const room = await createChatRoom(u1, u2, commonInterests);
+  const roomId = room._id.toString();
+
+  await setUserState(u1, "matched", { roomId });
+  await setUserState(u2, "matched", { roomId });
+
+  const ws1 = connectionManager.get(u1);
+  if (ws1) ws1.data.roomId = roomId;
+
+  const ws2 = connectionManager.get(u2);
+  if (ws2) ws2.data.roomId = roomId;
+
+  // u1 is the WebRTC offer initiator to avoid glare
+  connectionManager.send(u1, {
+    type: "match.found",
+    data: { roomId, commonInterests, initiator: true },
+  });
+  connectionManager.send(u2, {
+    type: "match.found",
+    data: { roomId, commonInterests, initiator: false },
+  });
+
+  logEvent({
+    eventType: "match_established",
+    roomId,
+    details: { users: pair, commonInterests },
+  });
+}
+
+async function relayToPartner(
+  ws: ServerWebSocket<WSContextData>,
+  event: Extract<ServerEvent, { type: "webrtc.signal" | "video.state" }>
+) {
+  const { sessionId, roomId } = ws.data;
+  if (!roomId) {
+    ws.send(
+      JSON.stringify({
+        type: "error",
+        data: { code: "NO_ACTIVE_ROOM", message: "You are not in a chat room" },
+      })
+    );
+    return;
+  }
+
+  const room = await getRoomCache(roomId);
+  if (!room) return;
+
+  const partnerId = room.participants.find((p) => p !== sessionId);
+  if (!partnerId) return;
+
+  connectionManager.send(partnerId, event);
+}
+
+async function handleQueueLeave(ws: ServerWebSocket<WSContextData>) {
+  const { sessionId } = ws.data;
+  await removeFromQueue(sessionId, ws.data.interests);
+  await setUserState(sessionId, "idle");
+  ws.send(JSON.stringify({ type: "chat.ended", data: { reason: "stop" } }));
+  logEvent({ eventType: "queue_leave", sessionId });
+}
+
+function sendRateLimited(
+  ws: ServerWebSocket<WSContextData>,
+  retryAfterSeconds: number
+) {
+  ws.send(
+    JSON.stringify({
+      type: "error",
+      data: {
+        code: "RATE_LIMITED",
+        message: `Sending messages too fast. Wait ${retryAfterSeconds} seconds to send again.`,
+        retryAfterSeconds,
+      },
+    })
+  );
+}
+
+async function handleChatMessage(
+  ws: ServerWebSocket<WSContextData>,
+  content: string
+) {
+  const { sessionId, roomId } = ws.data;
+  if (!roomId) {
+    ws.send(
+      JSON.stringify({
+        type: "error",
+        data: { code: "NO_ACTIVE_ROOM", message: "You are not in a chat room" },
+      })
+    );
+    return;
+  }
+
+  // Rate limiting: allow normal chat, penalize only rapid spam
+  const now = Date.now();
+  const penaltyMs = RATE_LIMITS.MESSAGE_COOLDOWN_SECONDS * 1000;
+
+  if (ws.data.messagePenaltyUntil && now < ws.data.messagePenaltyUntil) {
+    const retryAfterSeconds = Math.max(
+      1,
+      Math.ceil((ws.data.messagePenaltyUntil - now) / 1000)
+    );
+    sendRateLimited(ws, retryAfterSeconds);
+    return;
+  }
+
+  const recent = (ws.data.recentMessageTimes ?? []).filter(
+    (t) => now - t < RATE_LIMITS.MESSAGE_BURST_WINDOW_MS
+  );
+  const tooFast =
+    ws.data.lastMessageTime != null &&
+    now - ws.data.lastMessageTime < RATE_LIMITS.MESSAGE_SPAM_INTERVAL_MS;
+  const bursting = recent.length >= RATE_LIMITS.MESSAGE_BURST_LIMIT;
+
+  if (tooFast || bursting) {
+    ws.data.messagePenaltyUntil = now + penaltyMs;
+    sendRateLimited(ws, RATE_LIMITS.MESSAGE_COOLDOWN_SECONDS);
+    return;
+  }
+
+  ws.data.lastMessageTime = now;
+  recent.push(now);
+  ws.data.recentMessageTimes = recent;
+
+  // Safety & content moderation check
+  const modResult = await checkContentModeration(content);
+  if (modResult.flagged) {
+    ws.send(
+      JSON.stringify({
+        type: "moderation.warning",
+        data: { message: modResult.reason || "Message blocked by safety filter" },
+      })
+    );
+    logEvent({
+      eventType: "message_blocked_moderation",
+      sessionId,
+      roomId,
+      details: { reason: modResult.reason },
+    });
+    return;
+  }
+
+  const room = await getRoomCache(roomId);
+  if (!room) return;
+
+  const partnerId = room.participants.find((p) => p !== sessionId);
+  if (!partnerId) return;
+
+  // Append to ephemeral cache
+  await appendMessageToRoomCache(roomId, sessionId, content);
+
+  const timestamp = new Date().toISOString();
+
+  // Send message to partner
+  connectionManager.send(partnerId, {
+    type: "chat.message",
+    data: { content, timestamp },
+  });
+}
+
+async function handleChatTyping(ws: ServerWebSocket<WSContextData>) {
+  const { sessionId, roomId } = ws.data;
+  if (!roomId) return;
+
+  const room = await getRoomCache(roomId);
+  if (!room) return;
+
+  const partnerId = room.participants.find((p) => p !== sessionId);
+  if (partnerId) {
+    connectionManager.send(partnerId, { type: "chat.typing" });
+  }
+}
+
+async function handleChatNext(ws: ServerWebSocket<WSContextData>) {
+  const { sessionId, roomId } = ws.data;
+
+  // Cooldown check for next button
+  const now = Date.now();
+  if (
+    ws.data.lastSkipTime &&
+    now - ws.data.lastSkipTime < RATE_LIMITS.SKIP_COOLDOWN_SECONDS * 1000
+  ) {
+    ws.send(
+      JSON.stringify({
+        type: "error",
+        data: {
+          code: "SKIP_COOLDOWN",
+          message: `Please wait ${RATE_LIMITS.SKIP_COOLDOWN_SECONDS}s before finding another match`,
+        },
+      })
+    );
+    return;
+  }
+  ws.data.lastSkipTime = now;
+
+  if (roomId) {
+    await endCurrentRoom(roomId, sessionId, "next");
+  }
+
+  // Automatically requeue
+  await handleQueueJoin(ws, ws.data.interests);
+}
+
+async function handleChatStop(ws: ServerWebSocket<WSContextData>) {
+  const { sessionId, roomId } = ws.data;
+  if (roomId) {
+    await endCurrentRoom(roomId, sessionId, "stop");
+  }
+  await removeFromQueue(sessionId, ws.data.interests);
+  await setUserState(sessionId, "idle");
+  ws.send(JSON.stringify({ type: "chat.ended", data: { reason: "stop" } }));
+}
+
+async function handleChatReport(
+  ws: ServerWebSocket<WSContextData>,
+  category: any,
+  description?: string
+) {
+  const { sessionId, roomId } = ws.data;
+  if (!roomId) return;
+
+  try {
+    await submitModerationReport({
+      reporterSessionId: sessionId,
+      roomId,
+      category,
+      description,
+    });
+
+    // End chat room on report
+    await endCurrentRoom(roomId, sessionId, "report");
+    await setUserState(sessionId, "idle");
+
+    ws.send(
+      JSON.stringify({
+        type: "chat.ended",
+        data: { reason: "report" },
+      })
+    );
+  } catch (err: any) {
+    ws.send(
+      JSON.stringify({
+        type: "error",
+        data: { code: "REPORT_FAILED", message: err.message },
+      })
+    );
+  }
+}
+
+async function handleChatBlock(ws: ServerWebSocket<WSContextData>) {
+  const { sessionId, roomId } = ws.data;
+  if (!roomId) return;
+
+  const room = await getRoomCache(roomId);
+  if (!room) return;
+
+  const partnerId = room.participants.find((p) => p !== sessionId);
+  if (partnerId) {
+    await blockUser(sessionId, partnerId);
+  }
+
+  await endCurrentRoom(roomId, sessionId, "stop");
+  await setUserState(sessionId, "idle");
+  ws.send(JSON.stringify({ type: "chat.ended", data: { reason: "stop" } }));
+}
+
+export async function endCurrentRoom(
+  roomId: string,
+  initiatorSessionId: string,
+  reason: "next" | "stop" | "disconnect" | "report" | "moderation"
+) {
+  const room = await getRoomCache(roomId);
+  if (!room) return;
+
+  await closeChatRoom(
+    roomId,
+    reason === "disconnect" ? "partner_left" : reason
+  );
+
+  const partnerId = room.participants.find((p) => p !== initiatorSessionId);
+  if (partnerId) {
+    await setUserState(partnerId, "idle");
+    const partnerWs = connectionManager.get(partnerId);
+    if (partnerWs) {
+      partnerWs.data.roomId = undefined;
+    }
+    connectionManager.send(partnerId, {
+      type: "chat.partner_left",
+      data: { reason },
+    });
+  }
+
+  const initiatorWs = connectionManager.get(initiatorSessionId);
+  if (initiatorWs) {
+    initiatorWs.data.roomId = undefined;
+  }
+}

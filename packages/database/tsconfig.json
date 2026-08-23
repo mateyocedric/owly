@@ -1,0 +1,10 @@
+{
+  "extends": "@owly/config/tsconfig.bun.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src/**/*.ts"]
+}

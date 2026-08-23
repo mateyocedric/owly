@@ -1,0 +1,47 @@
+import { redis } from "../lib/redis.js";
+import { REDIS_KEYS, type UserState } from "@owly/shared";
+
+export interface SessionPresence {
+  state: UserState;
+  roomId?: string;
+  queuedAt?: number;
+  lastSeenAt: number;
+}
+
+export async function getUserState(sessionId: string): Promise<SessionPresence> {
+  const data = await redis.get(`${REDIS_KEYS.PRESENCE}${sessionId}`);
+  if (!data) {
+    return { state: "idle", lastSeenAt: Date.now() };
+  }
+  try {
+    return JSON.parse(data);
+  } catch {
+    return { state: "idle", lastSeenAt: Date.now() };
+  }
+}
+
+export async function setUserState(
+  sessionId: string,
+  state: UserState,
+  details?: { roomId?: string; queuedAt?: number }
+) {
+  const current = await getUserState(sessionId);
+  const updated: SessionPresence = {
+    ...current,
+    state,
+    roomId: details?.roomId !== undefined ? details.roomId : current.roomId,
+    queuedAt: details?.queuedAt !== undefined ? details.queuedAt : current.queuedAt,
+    lastSeenAt: Date.now(),
+  };
+
+  await redis.set(
+    `${REDIS_KEYS.PRESENCE}${sessionId}`,
+    JSON.stringify(updated),
+    "EX",
+    86400
+  );
+}
+
+export async function clearUserState(sessionId: string) {
+  await redis.del(`${REDIS_KEYS.PRESENCE}${sessionId}`);
+}

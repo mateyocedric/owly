@@ -1,0 +1,10 @@
+{
+  "extends": "@owly/config/tsconfig.react.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
+}

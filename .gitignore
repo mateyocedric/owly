@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+.bun/
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Drizzle
+drizzle/meta/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Testing
+coverage/
+test-results/
+playwright-report/
+blob-report/
+
+# Docker
+docker-compose.override.yml
+
+# Lock files (Bun uses bun.lock)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
