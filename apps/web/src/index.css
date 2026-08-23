@@ -1,14 +1,11 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap");
 @import "tailwindcss";
-
-@layer base {
-  :root {
-    --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    --font-mono: 'JetBrains Mono', monospace;
-  }
-}
+@import "@owly/ui/styles.css";
+@import "./styles/design-system.css";
+@source "../../../packages/ui/src/**/*.{ts,tsx}";
 
 body {
-  font-family: var(--font-sans);
+  font-family: var(--sx-font-body, Inter, Arial, Verdana, sans-serif);
 }
 
 /* Custom scrollbar */
@@ -28,30 +25,4 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.25);
-}
-
-/* Glassmorphism utility */
-.glass-panel {
-  background: rgba(18, 18, 23, 0.7);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.glass-card {
-  background: rgba(24, 24, 27, 0.5);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.glow-violet {
-  box-shadow: 0 0 50px -10px rgba(139, 92, 246, 0.3);
-}
-
-@keyframes pulse-subtle {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.85; transform: scale(1.02); }
-}
-
-.animate-pulse-subtle {
-  animation: pulse-subtle 2.5s ease-in-out infinite;
 }

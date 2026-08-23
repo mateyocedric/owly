@@ -19,48 +19,42 @@ export function AdminDashboardMetrics({ metrics }: DashboardProps) {
       value: metrics.activeSessions,
       sub: `${metrics.totalSessions} lifetime`,
       icon: Users,
-      color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
     },
     {
       title: "Chat Rooms Created",
       value: metrics.totalRooms,
       sub: "Total pairs matched",
       icon: MessageSquare,
-      color: "text-indigo-400 bg-indigo-500/10 border-indigo-500/20",
     },
     {
       title: "Pending Reports",
       value: metrics.pendingReports,
       sub: "Require review",
       icon: AlertTriangle,
-      color: "text-amber-400 bg-amber-500/10 border-amber-500/20",
     },
     {
       title: "Total Bans Active",
       value: metrics.totalBans,
       sub: "Enforced by staff/filter",
       icon: ShieldCheck,
-      color: "text-red-400 bg-red-500/10 border-red-500/20",
     },
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {cards.map((card) => {
         const Icon = card.icon;
         return (
-          <Card key={card.title} className="glass-card">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 p-5">
-              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+          <Card key={card.title}>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 {card.title}
               </CardTitle>
-              <div className={`p-2 rounded-xl border ${card.color}`}>
-                <Icon className="h-4 w-4" />
-              </div>
+              <Icon className="size-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent className="p-5 pt-0">
-              <div className="text-2xl font-black text-white">{card.value}</div>
-              <p className="text-xs text-zinc-400 mt-1">{card.sub}</p>
+            <CardContent>
+              <div className="text-2xl font-bold">{card.value}</div>
+              <p className="mt-1 text-xs text-muted-foreground">{card.sub}</p>
             </CardContent>
           </Card>
         );

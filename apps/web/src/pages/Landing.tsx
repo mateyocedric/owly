@@ -1,17 +1,12 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Button } from "@owly/ui";
-import {
-  MessageSquare,
-  Shield,
-  Zap,
-  Sparkles,
-  Lock,
-  ArrowRight,
-  EyeOff,
-  UserX,
-} from "lucide-react";
+import { ArrowRight, Lock, Shield, UserX } from "lucide-react";
 import { useAppStore } from "../lib/store.js";
+import {
+  FeatureCard,
+  GhostButton,
+  PageContainer,
+} from "../components/design/index.js";
 
 export function LandingPage() {
   const navigate = useNavigate();
@@ -26,98 +21,58 @@ export function LandingPage() {
   };
 
   return (
-    <div className="relative overflow-hidden pt-8 pb-16">
-      {/* Background glow accents */}
-      <div className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 h-[500px] w-[800px] bg-gradient-to-tr from-violet-600/20 via-indigo-600/10 to-transparent blur-3xl" />
+    <PageContainer wide className="space-y-16 py-16 sm:py-24">
+      <div className="mx-auto max-w-3xl space-y-8 text-center">
+        <p className="sx-eyebrow">Next-Gen Private Anonymous Chat</p>
 
-      <div className="mx-auto max-w-5xl px-4 sm:px-6 relative space-y-16">
-        {/* Hero Section */}
-        <div className="text-center space-y-6 pt-8 sm:pt-14 max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-1.5 text-xs font-semibold text-violet-300 backdrop-blur-sm">
-            <Sparkles className="h-3.5 w-3.5 text-amber-400" />
-            <span>Next-Gen Private Anonymous Chat</span>
-          </div>
+        <h1 className="sx-display-hero">
+          Talk to strangers.
+          <br />
+          Safely &amp; ephemerally.
+        </h1>
 
-          <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-white leading-[1.1]">
-            Talk to strangers.{" "}
-            <span className="bg-gradient-to-r from-violet-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent">
-              Safely & Ephemerally.
-            </span>
-          </h1>
+        <p className="sx-body mx-auto max-w-2xl">
+          Connect one-on-one with real people around the globe. No profiles, no saved history,
+          zero personal tracking. Match by shared interests or go totally random.
+        </p>
 
-          <p className="text-base sm:text-lg text-zinc-400 max-w-2xl mx-auto leading-relaxed">
-            Connect one-on-one with real people around the globe. No profiles, no saved history, zero personal tracking. Match by shared interests or go totally random.
-          </p>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-            <Button
-              onClick={handleStart}
-              size="xl"
-              className="w-full sm:w-auto bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-extrabold shadow-xl shadow-violet-600/30 rounded-2xl"
-            >
-              <MessageSquare className="h-5 w-5 mr-2" />
-              Start Chatting Now
-              <ArrowRight className="h-5 w-5 ml-2" />
-            </Button>
-
-            <Link to="/interests" className="w-full sm:w-auto">
-              <Button
-                variant="outline"
-                size="xl"
-                className="w-full border-zinc-700 bg-zinc-900/50 hover:bg-zinc-800 text-zinc-200 rounded-2xl"
-              >
-                <Sparkles className="h-5 w-5 mr-2 text-violet-400" />
-                Select Interests
-              </Button>
-            </Link>
-          </div>
-
-          <div className="flex items-center justify-center gap-6 text-xs text-zinc-400 pt-2">
-            <span className="flex items-center gap-1.5">
-              <Lock className="h-3.5 w-3.5 text-emerald-400" /> End-to-end Ephemeral
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Shield className="h-3.5 w-3.5 text-violet-400" /> 18+ Age Verified
-            </span>
-            <span className="flex items-center gap-1.5">
-              <UserX className="h-3.5 w-3.5 text-indigo-400" /> Zero Sign-up
-            </span>
-          </div>
+        <div className="flex flex-col items-center gap-6 pt-4">
+          <GhostButton onClick={handleStart} className="w-full sm:w-auto">
+            Start Chatting
+            <ArrowRight className="size-4" />
+          </GhostButton>
+          <Link to="/interests" className="sx-link-on-dark sx-caption uppercase tracking-wider">
+            Select interests before matching
+          </Link>
         </div>
 
-        {/* Feature Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="glass-card rounded-2xl p-6 space-y-3">
-            <div className="h-10 w-10 rounded-xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center text-violet-400">
-              <EyeOff className="h-5 w-5" />
-            </div>
-            <h3 className="text-base font-bold text-white">100% Anonymous</h3>
-            <p className="text-xs text-zinc-400 leading-relaxed">
-              We never expose IP addresses, emails, or hardware IDs to chat partners. Identity stays completely anonymous.
-            </p>
-          </div>
-
-          <div className="glass-card rounded-2xl p-6 space-y-3">
-            <div className="h-10 w-10 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
-              <Zap className="h-5 w-5" />
-            </div>
-            <h3 className="text-base font-bold text-white">Instant Redis Pairing</h3>
-            <p className="text-xs text-zinc-400 leading-relaxed">
-              Atomic queue matching connects waiting users in milliseconds with zero race conditions and seamless "Next" skips.
-            </p>
-          </div>
-
-          <div className="glass-card rounded-2xl p-6 space-y-3">
-            <div className="h-10 w-10 rounded-xl bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-              <Shield className="h-5 w-5" />
-            </div>
-            <h3 className="text-base font-bold text-white">Proactive Moderation</h3>
-            <p className="text-xs text-zinc-400 leading-relaxed">
-              Built-in scam, harassment, and exploitation content filters with 1-click report and instant block tools.
-            </p>
-          </div>
+        <div className="flex flex-wrap items-center justify-center gap-6 pt-2">
+          <span className="sx-caption inline-flex items-center gap-1.5 uppercase tracking-wider">
+            <Lock className="size-3.5" /> Ephemeral
+          </span>
+          <span className="sx-caption inline-flex items-center gap-1.5 uppercase tracking-wider">
+            <Shield className="size-3.5" /> 18+ Verified
+          </span>
+          <span className="sx-caption inline-flex items-center gap-1.5 uppercase tracking-wider">
+            <UserX className="size-3.5" /> No Sign-up
+          </span>
         </div>
       </div>
-    </div>
+
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <FeatureCard
+          title="100% Anonymous"
+          description="We never expose IP addresses, emails, or hardware IDs to chat partners. Identity stays completely anonymous."
+        />
+        <FeatureCard
+          title="Instant Pairing"
+          description="Atomic queue matching connects waiting users in milliseconds with seamless skip and reconnect."
+        />
+        <FeatureCard
+          title="Proactive Moderation"
+          description="Built-in content filters with one-click report and instant block tools to keep conversations safe."
+        />
+      </div>
+    </PageContainer>
   );
 }

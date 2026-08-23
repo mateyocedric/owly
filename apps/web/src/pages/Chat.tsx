@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { MessageSquare } from "lucide-react";
 import { useChat } from "../hooks/useChat.js";
 import { MessageList } from "../components/chat/MessageList.js";
 import { MessageInput } from "../components/chat/MessageInput.js";
@@ -9,9 +10,8 @@ import { StatusIndicator } from "../components/chat/StatusIndicator.js";
 import { SafetyReminder } from "../components/chat/SafetyReminder.js";
 import { ReportModal } from "../components/chat/ReportModal.js";
 import { WaitingScreen } from "../components/matching/WaitingScreen.js";
-import { Button } from "@owly/ui";
-import { MessageSquare, Sparkles } from "lucide-react";
 import { useAppStore } from "../lib/store.js";
+import { GhostButton, PageContainer } from "../components/design/index.js";
 
 export function ChatPage() {
   const navigate = useNavigate();
@@ -44,7 +44,6 @@ export function ChatPage() {
 
   const [reportModalOpen, setReportModalOpen] = useState(false);
 
-  // If age not verified, redirect to age gate
   useEffect(() => {
     if (!ageVerified) {
       navigate("/age-gate");
@@ -57,68 +56,42 @@ export function ChatPage() {
   const isError = connectionState === "error";
 
   return (
-    <div className="mx-auto max-w-4xl px-2 sm:px-4 py-4 flex flex-col h-[calc(100vh-4.5rem)]">
-      {/* Top Bar: Status & Safety */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-        <StatusIndicator
-          state={connectionState}
-          commonInterests={commonInterests}
-        />
+    <PageContainer wide className="flex h-[calc(100vh-8rem)] flex-col py-4">
+      <div className="mb-3 flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+        <StatusIndicator state={connectionState} commonInterests={commonInterests} />
         <SafetyReminder />
       </div>
 
-      {/* Main Chat Container */}
-      <div className="flex-1 flex flex-col rounded-2xl border border-zinc-800 bg-zinc-950/90 backdrop-blur-md overflow-hidden shadow-2xl">
+      <div className="sx-chat-shell flex flex-1 flex-col">
         {isIdle ? (
-          /* Idle Start Screen */
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-6">
-            <div className="h-16 w-16 rounded-2xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center text-violet-400">
-              <MessageSquare className="h-8 w-8" />
-            </div>
-            <div className="space-y-2 max-w-sm">
-              <h3 className="text-xl font-bold text-white">Ready for a conversation?</h3>
-              <p className="text-xs text-zinc-400">
-                Click below to enter the matching queue and connect with a random stranger.
+          <div className="flex flex-1 flex-col items-center justify-center space-y-6 p-8 text-center">
+            <MessageSquare className="size-10 text-[var(--sx-on-primary-mute)]" />
+            <div className="max-w-sm space-y-2">
+              <h3 className="sx-panel-title">Ready for a conversation?</h3>
+              <p className="sx-caption">
+                Enter the matching queue to connect with a random stranger.
               </p>
             </div>
-
-            <Button
-              onClick={() => joinQueue()}
-              size="lg"
-              className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-extrabold shadow-xl shadow-violet-600/30 px-8 h-13 rounded-xl"
-            >
-              <Sparkles className="h-5 w-5 mr-2 text-amber-300" />
-              Start Chatting
-            </Button>
+            <GhostButton onClick={() => joinQueue()}>Start Chatting</GhostButton>
           </div>
         ) : isError ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-6">
-            <div className="h-16 w-16 rounded-2xl bg-red-600/20 border border-red-500/30 flex items-center justify-center text-red-400">
-              <MessageSquare className="h-8 w-8" />
-            </div>
-            <div className="space-y-2 max-w-sm">
-              <h3 className="text-xl font-bold text-white">Connection error</h3>
-              <p className="text-xs text-zinc-400">
+          <div className="flex flex-1 flex-col items-center justify-center space-y-6 p-8 text-center">
+            <MessageSquare className="size-10 text-[var(--sx-on-primary-mute)]" />
+            <div className="max-w-sm space-y-2">
+              <h3 className="sx-panel-title">Connection error</h3>
+              <p className="sx-caption">
                 Could not start a chat session. Check that the API is running, then try again.
               </p>
             </div>
-            <Button
-              onClick={() => joinQueue()}
-              size="lg"
-              className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-extrabold shadow-xl shadow-violet-600/30 px-8 h-13 rounded-xl"
-            >
-              Try again
-            </Button>
+            <GhostButton onClick={() => joinQueue()}>Try Again</GhostButton>
           </div>
         ) : isFinding ? (
-          /* Matchmaking Waiting Screen */
           <WaitingScreen
             position={queuePosition}
             interests={session?.interests}
             onCancel={stopChat}
           />
         ) : (
-          /* Active Chat Stream */
           <>
             <ChatControls
               connectionState={connectionState}
@@ -142,10 +115,7 @@ export function ChatPage() {
               />
             )}
 
-            <MessageList
-              messages={messages}
-              partnerTyping={partnerTyping}
-            />
+            <MessageList messages={messages} partnerTyping={partnerTyping} />
 
             <MessageInput
               onSend={sendMessage}
@@ -157,12 +127,11 @@ export function ChatPage() {
         )}
       </div>
 
-      {/* Report Modal */}
       <ReportModal
         open={reportModalOpen}
         onOpenChange={setReportModalOpen}
         onSubmit={reportPartner}
       />
-    </div>
+    </PageContainer>
   );
 }

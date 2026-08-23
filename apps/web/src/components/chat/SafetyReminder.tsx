@@ -3,10 +3,11 @@ import { ShieldAlert } from "lucide-react";
 
 export function SafetyReminder() {
   return (
-    <div className="flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-200/90 shadow-sm">
-      <ShieldAlert className="h-4 w-4 shrink-0 text-amber-400" />
+    <div className="flex items-center gap-2 border border-[var(--sx-hairline-on-dark)] px-3 py-2 text-xs text-[var(--sx-on-primary-mute)]">
+      <ShieldAlert className="size-4 shrink-0" />
       <p className="leading-tight">
-        <strong>Safety reminder:</strong> Never share real names, social handles, phone numbers, location, or financial details with strangers.
+        <strong className="text-[var(--sx-on-primary)]">Safety:</strong> Never share real names,
+        social handles, phone numbers, or financial details.
       </p>
     </div>
   );

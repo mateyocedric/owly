@@ -3,7 +3,10 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@owly/ui/components/*": ["./src/components/*"],
+      "@owly/ui/lib/*": ["./src/lib/*"],
+      "@owly/ui/hooks/*": ["./src/hooks/*"]
     }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"]

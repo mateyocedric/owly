@@ -1,8 +1,9 @@
 import React, { useEffect, useRef } from "react";
-import { Button } from "@owly/ui";
 import { Mic, MicOff, Video, VideoOff, Loader2 } from "lucide-react";
 import type { VideoStatus } from "../../hooks/useWebRTC.js";
 
+const mediaToggleClass =
+  "inline-flex size-8 shrink-0 items-center justify-center rounded-sm border border-[var(--sx-on-primary)] bg-transparent text-[var(--sx-on-primary)] transition-colors hover:bg-[var(--sx-on-primary)] hover:text-[var(--sx-ink)] disabled:pointer-events-none disabled:opacity-40";
 interface VideoPanelProps {
   localStream: MediaStream | null;
   remoteStream: MediaStream | null;
@@ -39,7 +40,7 @@ function VideoTile({
   }, [stream]);
 
   return (
-    <div className="relative h-full w-full overflow-hidden rounded-xl bg-zinc-900 border border-zinc-800">
+    <div className="relative h-full w-full overflow-hidden rounded-sm border border-[var(--sx-hairline-on-dark)] bg-[var(--sx-canvas-night-soft)]">
       {stream ? (
         <video
           ref={videoRef}
@@ -53,7 +54,7 @@ function VideoTile({
       ) : null}
 
       {(!stream || showOffOverlay) && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-zinc-900 text-zinc-400">
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-[var(--sx-canvas-night-soft)] text-[var(--sx-on-primary-mute)]">
           <VideoOff className="h-8 w-8 opacity-60" />
           <span className="text-xs font-medium">{emptyLabel}</span>
         </div>
@@ -89,8 +90,8 @@ export function VideoPanel({
             : null;
 
   return (
-    <div className="shrink-0 border-b border-zinc-800 bg-zinc-950/80 p-3 space-y-2">
-      <div className="relative aspect-video w-full max-h-[40vh] overflow-hidden rounded-xl">
+    <div className="shrink-0 space-y-2 border-b border-[var(--sx-hairline-on-dark)] p-3">
+      <div className="relative aspect-video max-h-[40vh] w-full overflow-hidden rounded-sm">
         <VideoTile
           stream={remoteStream}
           label={partnerMicOn ? "Stranger" : "Stranger (muted)"}
@@ -130,7 +131,7 @@ export function VideoPanel({
       </div>
 
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[11px] text-zinc-500 truncate">
+        <p className="truncate text-[11px] text-[var(--sx-on-primary-mute)]">
           {status === "permission_denied" || status === "error"
             ? statusMessage
             : status === "connected"
@@ -139,40 +140,24 @@ export function VideoPanel({
         </p>
 
         <div className="flex items-center gap-2">
-          <Button
+          <button
             type="button"
-            size="sm"
-            variant="outline"
+            className={mediaToggleClass}
             onClick={onToggleMic}
             disabled={!localStream}
-            className={`border-zinc-700 h-8 px-2.5 ${
-              micOn
-                ? "text-zinc-200 hover:bg-zinc-800"
-                : "text-red-300 border-red-500/40 bg-red-500/10 hover:bg-red-500/20"
-            }`}
             aria-label={micOn ? "Mute microphone" : "Unmute microphone"}
           >
-            {micOn ? <Mic className="h-3.5 w-3.5" /> : <MicOff className="h-3.5 w-3.5" />}
-          </Button>
-          <Button
+            {micOn ? <Mic className="size-3.5" /> : <MicOff className="size-3.5" />}
+          </button>
+          <button
             type="button"
-            size="sm"
-            variant="outline"
+            className={mediaToggleClass}
             onClick={onToggleCamera}
             disabled={!localStream}
-            className={`border-zinc-700 h-8 px-2.5 ${
-              cameraOn
-                ? "text-zinc-200 hover:bg-zinc-800"
-                : "text-red-300 border-red-500/40 bg-red-500/10 hover:bg-red-500/20"
-            }`}
             aria-label={cameraOn ? "Turn camera off" : "Turn camera on"}
           >
-            {cameraOn ? (
-              <Video className="h-3.5 w-3.5" />
-            ) : (
-              <VideoOff className="h-3.5 w-3.5" />
-            )}
-          </Button>
+            {cameraOn ? <Video className="size-3.5" /> : <VideoOff className="size-3.5" />}
+          </button>
         </div>
       </div>
     </div>

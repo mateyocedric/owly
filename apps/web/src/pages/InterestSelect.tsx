@@ -1,9 +1,16 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { ArrowRight } from "lucide-react";
 import { Button } from "@owly/ui";
 import { InterestTags } from "../components/matching/InterestTags.js";
 import { useAppStore } from "../lib/store.js";
-import { Sparkles, ArrowRight } from "lucide-react";
+import {
+  GhostButtonLight,
+  LightSurface,
+  PageContainer,
+  PagePanel,
+  PanelHeader,
+} from "../components/design/index.js";
 
 export function InterestSelectPage() {
   const navigate = useNavigate();
@@ -20,49 +27,44 @@ export function InterestSelectPage() {
   };
 
   return (
-    <div className="mx-auto max-w-xl px-4 py-12">
-      <div className="glass-panel rounded-2xl p-6 sm:p-8 space-y-6 shadow-2xl border border-zinc-800">
-        <div className="flex items-center gap-3 text-violet-400 border-b border-zinc-800 pb-4">
-          <div className="p-2.5 rounded-xl bg-violet-600/20 border border-violet-500/30">
-            <Sparkles className="h-6 w-6 text-violet-400" />
-          </div>
-          <div>
-            <h2 className="text-xl font-black text-white">Choose Your Interests</h2>
-            <p className="text-xs text-zinc-400">Match with people who love what you love</p>
-          </div>
-        </div>
-
-        <p className="text-xs text-zinc-400 leading-relaxed">
-          Adding topic tags prioritizes matching with people looking for the same topics. If no one with matching tags is waiting, we will fall back to a random match after a few seconds.
-        </p>
-
-        <InterestTags
-          selected={interests}
-          onChange={(newInterests) => setInterests(newInterests)}
-          max={5}
+    <PageContainer narrow>
+      <PagePanel>
+        <PanelHeader
+          title="Choose Interests"
+          description="Match with people who share your topics"
         />
 
-        <div className="flex gap-3 pt-4 border-t border-zinc-800">
-          <Button
-            onClick={() => {
-              setInterests([]);
-              handleStart();
-            }}
-            variant="outline"
-            className="flex-1 border-zinc-700 text-zinc-300"
-          >
-            Skip (Random Match)
-          </Button>
+        <LightSurface>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Adding topic tags prioritizes matching with people looking for the same topics. If no
+            one with matching tags is waiting, we fall back to a random match after a few seconds.
+          </p>
 
-          <Button
-            onClick={handleStart}
-            className="flex-1 bg-violet-600 hover:bg-violet-500 text-white font-bold"
-          >
-            Save & Start Chat
-            <ArrowRight className="h-4 w-4 ml-1.5" />
-          </Button>
-        </div>
-      </div>
-    </div>
+          <InterestTags
+            selected={interests}
+            onChange={(newInterests) => setInterests(newInterests)}
+            max={5}
+          />
+
+          <div className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row">
+            <Button
+              onClick={() => {
+                setInterests([]);
+                handleStart();
+              }}
+              variant="outline"
+              className="flex-1"
+            >
+              Skip — Random Match
+            </Button>
+
+            <GhostButtonLight onClick={handleStart} className="flex-1 justify-center">
+              Save &amp; Start
+              <ArrowRight className="size-4" />
+            </GhostButtonLight>
+          </div>
+        </LightSurface>
+      </PagePanel>
+    </PageContainer>
   );
 }
