@@ -1,0 +1,22 @@
+function trimSlash(value: string): string {
+  return value.replace(/\/+$/, "");
+}
+
+export function apiBaseUrl(): string {
+  const raw = import.meta.env.VITE_API_URL?.trim();
+  return raw ? trimSlash(raw) : "";
+}
+
+export function websocketUrl(token?: string | null): string {
+  const configured = import.meta.env.VITE_WS_URL?.trim();
+  const tokenQuery = token ? `token=${encodeURIComponent(token)}` : "";
+
+  if (configured) {
+    const url = new URL(trimSlash(configured));
+    if (token) url.searchParams.set("token", token);
+    return url.toString();
+  }
+
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  return `${protocol}//${window.location.host}/ws${tokenQuery ? `?${tokenQuery}` : ""}`;
+}

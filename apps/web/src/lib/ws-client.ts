@@ -1,4 +1,5 @@
 import type { ClientEvent, ServerEvent } from "@owly/shared";
+import { websocketUrl } from "./config.js";
 
 type EventListener = (event: ServerEvent) => void;
 type CloseListener = () => void;
@@ -39,10 +40,7 @@ export class OwlyWSClient {
     this.didOpen = false;
 
     this.connectPromise = new Promise((resolve, reject) => {
-      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const host = window.location.host;
-      const url = `${protocol}//${host}/ws${this.token ? `?token=${this.token}` : ""}`;
-
+      const url = websocketUrl(this.token);
       this.ws = new WebSocket(url);
 
       this.ws.onopen = () => {

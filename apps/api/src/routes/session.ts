@@ -46,11 +46,11 @@ sessionRouter.post(
         interests
       );
 
-      // Set httpOnly cookie for web client
+      const crossOrigin = Boolean(env.CORS_ORIGINS);
       setCookie(c, "owly_session", rawToken, {
         httpOnly: true,
-        secure: env.NODE_ENV === "production",
-        sameSite: "Lax",
+        secure: env.NODE_ENV === "production" || crossOrigin,
+        sameSite: crossOrigin ? "None" : "Lax",
         maxAge: env.SESSION_TTL_SECONDS,
         path: "/",
         domain: env.COOKIE_DOMAIN || undefined,

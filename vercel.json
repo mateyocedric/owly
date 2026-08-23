@@ -1,0 +1,6 @@
+{
+  "buildCommand": "bun run --filter @owly/web build",
+  "outputDirectory": "apps/web/dist",
+  "installCommand": "bun install",
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+}
