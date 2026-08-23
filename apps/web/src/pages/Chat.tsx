@@ -70,7 +70,7 @@ export function ChatPage() {
 
   if (isPreSession) {
     return (
-      <PageContainer wide className="flex h-[calc(100vh-8rem)] flex-col py-4">
+      <PageContainer wide className="flex min-h-0 w-full flex-1 flex-col !py-4">
         <div className="mb-3 flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
           <StatusIndicator state={connectionState} commonInterests={commonInterests} />
           <SafetyReminder />

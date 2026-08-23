@@ -4,8 +4,22 @@
 @import "./styles/design-system.css";
 @source "../../../packages/ui/src/**/*.{ts,tsx}";
 
+html,
+body,
+#root {
+  background-color: var(--sx-canvas-night, #000);
+  min-height: 100dvh;
+}
+
 body {
   font-family: var(--sx-font-body, Inter, Arial, Verdana, sans-serif);
+}
+
+html.owly-chat-lock,
+html.owly-chat-lock body,
+html.owly-chat-lock #root {
+  height: 100dvh;
+  overflow: hidden;
 }
 
 /* Custom scrollbar */

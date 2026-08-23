@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
 import { TooltipProvider, Toaster } from "@owly/ui";
 import { Header } from "./components/layout/Header.js";
@@ -17,6 +17,12 @@ import { ComponentsPage } from "./pages/Components.js";
 function AppRoutes() {
   const location = useLocation();
   const isChat = location.pathname === "/chat";
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.toggle("owly-chat-lock", isChat);
+    return () => root.classList.remove("owly-chat-lock");
+  }, [isChat]);
 
   return (
     <div className={`owly-app flex flex-col ${isChat ? "h-dvh overflow-hidden" : "min-h-screen"}`}>
