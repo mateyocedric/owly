@@ -21,45 +21,48 @@ export function ChatControls({
   const isConnected = connectionState === "connected";
   const isPartnerLeft = connectionState === "partner_left";
 
+  const ghostControlClass =
+    "shrink-0 whitespace-nowrap !py-2 !text-[10px] border-white/30 bg-black/50 backdrop-blur-sm hover:bg-white/20 lg:!py-2 lg:!text-xs lg:border-[var(--sx-on-primary)] lg:bg-transparent lg:backdrop-blur-none lg:hover:bg-[var(--sx-on-primary)] lg:hover:text-[var(--sx-ink)]";
+
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 lg:px-4 lg:py-3">
-      <div className="flex items-center gap-1.5 lg:gap-2">
+    <div className="@container flex flex-wrap items-center justify-between gap-2 px-3 py-2 lg:px-4 lg:py-3">
+      <div className="flex shrink-0 items-center gap-1.5 lg:gap-2">
         <GhostButton
           onClick={onNext}
-          className="min-w-0 !px-2.5 !py-1 !text-[10px] border-white/30 bg-black/50 backdrop-blur-sm hover:bg-white/20 lg:min-w-[100px] lg:!px-4 lg:!py-2 lg:!text-xs lg:border-[var(--sx-on-primary)] lg:bg-transparent lg:backdrop-blur-none lg:hover:bg-[var(--sx-on-primary)] lg:hover:text-[var(--sx-ink)]"
+          className={`${ghostControlClass} min-w-0 !px-3 lg:min-w-[100px] lg:!px-4`}
         >
-          <ArrowRight className="size-3 lg:size-4" />
+          <ArrowRight className="size-4 lg:size-4" />
           {isPartnerLeft ? "Find New" : "Next"}
         </GhostButton>
 
         <GhostButton
           onClick={onStop}
-          className="!px-2.5 !py-1 !text-[10px] border-white/30 bg-black/50 backdrop-blur-sm hover:bg-white/20 lg:!px-4 lg:!py-2 lg:!text-xs lg:border-[var(--sx-on-primary)] lg:bg-transparent lg:backdrop-blur-none lg:hover:bg-[var(--sx-on-primary)] lg:hover:text-[var(--sx-ink)]"
+          className={`${ghostControlClass} !px-3 lg:!px-4`}
         >
-          <Square className="size-3 lg:size-3.5" />
+          <Square className="size-4 lg:size-3.5" />
           Stop
         </GhostButton>
       </div>
 
       {(isConnected || isPartnerLeft) && (
-        <div className="flex items-center gap-4">
-          <button
-            type="button"
+        <div className="flex shrink-0 items-center gap-1.5">
+          <GhostButton
             onClick={onOpenReport}
-            className="inline-flex items-center gap-1 rounded-sm bg-black/40 px-2 py-1 text-[10px] uppercase tracking-wider text-white/80 backdrop-blur-sm hover:text-white lg:bg-transparent lg:px-0 lg:py-0 lg:sx-caption lg:text-[var(--sx-on-primary-mute)] lg:hover:text-[var(--sx-on-primary)]"
+            aria-label="Report"
+            className={`${ghostControlClass} !px-2 @[32rem]:!px-3`}
           >
             <Flag className="size-3.5" />
-            Report
-          </button>
+            <span className="hidden @[32rem]:inline">Report</span>
+          </GhostButton>
 
-          <button
-            type="button"
+          <GhostButton
             onClick={onBlock}
-            className="inline-flex items-center gap-1 rounded-sm bg-black/40 px-2 py-1 text-[10px] uppercase tracking-wider text-white/80 backdrop-blur-sm hover:text-white lg:bg-transparent lg:px-0 lg:py-0 lg:sx-caption lg:text-[var(--sx-on-primary-mute)] lg:hover:text-[var(--sx-on-primary)]"
+            aria-label="Block"
+            className={`${ghostControlClass} !px-2 @[32rem]:!px-3`}
           >
             <ShieldBan className="size-3.5" />
-            Block
-          </button>
+            <span className="hidden @[32rem]:inline">Block</span>
+          </GhostButton>
         </div>
       )}
     </div>
