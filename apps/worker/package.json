@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "bun --watch src/index.ts",
+    "dev": "cd ../.. && bun --watch apps/worker/src/index.ts",
     "start": "bun src/index.ts",
     "typecheck": "tsc --noEmit"
   },
