@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { ConnectionState, ChatMessage } from "@owly/shared";
+import { GENDERS, type ConnectionState, type ChatMessage, type Gender } from "@owly/shared";
 
 export interface UserSession {
   sessionId: string;
@@ -7,15 +7,18 @@ export interface UserSession {
   expiresAt: string;
   ageVerified: boolean;
   interests: string[];
+  gender: Gender | null;
 }
 
 interface AppState {
   session: UserSession | null;
   ageVerified: boolean;
+  gender: Gender | null;
   interests: string[];
   connectionState: ConnectionState;
   roomId: string | null;
   commonInterests: string[];
+  partnerGender: Gender | null;
   queuePosition: number | null;
   messages: ChatMessage[];
   partnerTyping: boolean;
@@ -24,9 +27,14 @@ interface AppState {
   // Actions
   setSession: (session: UserSession | null) => void;
   setAgeVerified: (verified: boolean) => void;
+  setGender: (gender: Gender | null) => void;
   setInterests: (interests: string[]) => void;
   setConnectionState: (state: ConnectionState) => void;
-  setRoomId: (roomId: string | null, commonInterests?: string[]) => void;
+  setRoomId: (
+    roomId: string | null,
+    commonInterests?: string[],
+    partnerGender?: Gender | null
+  ) => void;
   setQueuePosition: (pos: number | null) => void;
   addMessage: (msg: ChatMessage) => void;
   removeMessage: (id: string) => void;
@@ -37,11 +45,23 @@ interface AppState {
 }
 
 const SESSION_STORAGE_KEY = "owly_session";
+const GENDER_STORAGE_KEY = "owly_gender";
 
 const savedAgeVerified =
   typeof window !== "undefined"
     ? localStorage.getItem("owly_age_verified") === "true"
     : false;
+
+function parseGender(value: unknown): Gender | null {
+  return typeof value === "string" && (GENDERS as readonly string[]).includes(value)
+    ? (value as Gender)
+    : null;
+}
+
+function loadSavedGender(): Gender | null {
+  if (typeof window === "undefined") return null;
+  return parseGender(localStorage.getItem(GENDER_STORAGE_KEY));
+}
 
 function loadSavedSession(): UserSession | null {
   if (typeof window === "undefined") return null;
@@ -54,7 +74,10 @@ function loadSavedSession(): UserSession | null {
       sessionStorage.removeItem(SESSION_STORAGE_KEY);
       return null;
     }
-    return parsed;
+    return {
+      ...parsed,
+      gender: parseGender(parsed.gender),
+    };
   } catch {
     return null;
   }
@@ -69,15 +92,27 @@ function persistSession(session: UserSession | null) {
   }
 }
 
+function persistGender(gender: Gender | null) {
+  if (typeof window === "undefined") return;
+  if (gender) {
+    localStorage.setItem(GENDER_STORAGE_KEY, gender);
+  } else {
+    localStorage.removeItem(GENDER_STORAGE_KEY);
+  }
+}
+
 const savedSession = loadSavedSession();
+const savedGender = loadSavedGender() ?? savedSession?.gender ?? null;
 
 export const useAppStore = create<AppState>((set) => ({
   session: savedSession,
   ageVerified: savedAgeVerified,
+  gender: savedGender,
   interests: savedSession?.interests ?? [],
   connectionState: "idle",
   roomId: null,
   commonInterests: [],
+  partnerGender: null,
   queuePosition: null,
   messages: [],
   partnerTyping: false,
@@ -88,6 +123,7 @@ export const useAppStore = create<AppState>((set) => ({
     return set((state) => ({
       session,
       ageVerified: session ? session.ageVerified : state.ageVerified,
+      gender: session?.gender ?? state.gender,
     }));
   },
 
@@ -107,6 +143,15 @@ export const useAppStore = create<AppState>((set) => ({
     }));
   },
 
+  setGender: (gender) => {
+    persistGender(gender);
+    return set((state) => {
+      const session = state.session ? { ...state.session, gender } : null;
+      if (session) persistSession(session);
+      return { gender, session };
+    });
+  },
+
   setInterests: (interests) =>
     set((state) => ({
       interests,
@@ -116,8 +161,13 @@ export const useAppStore = create<AppState>((set) => ({
     })),
 
   setConnectionState: (connectionState) => set({ connectionState }),
-  setRoomId: (roomId, commonInterests = []) =>
-    set({ roomId, commonInterests, partnerTyping: false }),
+  setRoomId: (roomId, commonInterests = [], partnerGender = null) =>
+    set({
+      roomId,
+      commonInterests,
+      partnerGender: roomId ? partnerGender : null,
+      partnerTyping: false,
+    }),
   setQueuePosition: (queuePosition) => set({ queuePosition }),
   addMessage: (msg) =>
     set((state) => ({ messages: [...state.messages, msg] })),
@@ -131,6 +181,7 @@ export const useAppStore = create<AppState>((set) => ({
       connectionState: "idle",
       roomId: null,
       commonInterests: [],
+      partnerGender: null,
       queuePosition: null,
       messages: [],
       partnerTyping: false,

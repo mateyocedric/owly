@@ -49,6 +49,15 @@ export const CHAT_REACTION_BY_ID = {
   fire: { emoji: "🔥", label: "Fire" },
 } as const satisfies Record<ChatReactionId, { emoji: string; label: string }>;
 
+export const GENDERS = ["male", "female", "other"] as const;
+export type Gender = (typeof GENDERS)[number];
+
+export const GENDER_LABELS = {
+  male: "Male",
+  female: "Female",
+  other: "Other",
+} as const satisfies Record<Gender, string>;
+
 export const MATCHMAKING = {
   /** Seconds to wait for interest-based match before falling back to random */
   INTEREST_TIMEOUT_SECONDS: 15,

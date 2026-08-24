@@ -13,14 +13,18 @@ test.describe("Owly Anonymous Random Chat User Flow", () => {
     await page.getByRole("button", { name: /Start Chatting Now/i }).click();
     await expect(page).toHaveURL(/.*age-gate/);
 
-    // 3. Complete age verification
+    // 3. Complete age verification, then select gender
     await page.getByText(/I am at least 18 years of age or older/i).click();
     await page.getByText(/I agree to the Community Guidelines/i).click();
+    await page.getByRole("button", { name: /^Continue$/i }).click();
+    await expect(page.getByRole("heading", { name: /Your Gender/i })).toBeVisible();
+    await page.getByRole("radio", { name: /^Male$/i }).click();
     await page.getByRole("button", { name: /Enter Anonymous Chat/i }).click();
 
-    // 4. Lands on Chat interface
+    // 4. Lands on Chat interface with selected gender
     await expect(page).toHaveURL(/.*chat/);
     await expect(page.getByText(/Ready for a conversation?/i)).toBeVisible();
+    await expect(page.getByText(/^Male$/i)).toBeVisible();
 
     // 5. Check legal links
     await page.goto("/guidelines");

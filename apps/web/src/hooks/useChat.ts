@@ -173,7 +173,10 @@ export function useChat() {
           expiresAt: string;
         }>("/session", {
           method: "POST",
-          body: JSON.stringify({ interests: store.interests || [] }),
+          body: JSON.stringify({
+            interests: store.interests || [],
+            gender: store.gender || undefined,
+          }),
         });
 
         session = {
@@ -182,6 +185,7 @@ export function useChat() {
           expiresAt: created.expiresAt,
           ageVerified: true,
           interests: store.interests || [],
+          gender: store.gender,
         };
         store.setSession(session);
       } catch (err) {
@@ -246,7 +250,11 @@ export function useChat() {
             recentReactionTimesRef.current = [];
             setWebrtcInitiator(event.data.initiator);
             store.setConnectionState("connected");
-            store.setRoomId(event.data.roomId, event.data.commonInterests);
+            store.setRoomId(
+              event.data.roomId,
+              event.data.commonInterests,
+              event.data.partnerGender ?? null
+            );
             store.clearMessages();
             store.addMessage({
               id: nanoid(),
@@ -386,7 +394,10 @@ export function useChat() {
         store.clearMessages();
         client.send({
           type: "queue.join",
-          data: { interests: interests || store.interests },
+          data: {
+            interests: interests || store.interests,
+            gender: store.gender || undefined,
+          },
         });
       } catch (err) {
         console.error("Failed to join queue:", err);

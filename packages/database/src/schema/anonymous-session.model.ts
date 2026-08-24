@@ -16,6 +16,7 @@ export interface IAnonymousSession extends Document {
   ipHash: string;
   userAgent?: string;
   interests: string[];
+  gender?: "male" | "female" | "other";
   createdAt: Date;
   lastActiveAt: Date;
   expiresAt: Date;
@@ -42,6 +43,10 @@ const anonymousSessionSchema = new Schema<IAnonymousSession>(
     },
     userAgent: { type: String },
     interests: [{ type: String }],
+    gender: {
+      type: String,
+      enum: ["male", "female", "other"],
+    },
     lastActiveAt: {
       type: Date,
       default: Date.now,

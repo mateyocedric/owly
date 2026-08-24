@@ -1,7 +1,8 @@
 import { z } from "zod";
-import { CHAT_REACTION_IDS, RATE_LIMITS } from "../constants.js";
+import { CHAT_REACTION_IDS, GENDERS, RATE_LIMITS } from "../constants.js";
 
 const chatReactionIdSchema = z.enum(CHAT_REACTION_IDS);
+export const genderSchema = z.enum(GENDERS);
 
 // ─── Client → Server Events ─────────────────────────────────────────────────
 
@@ -9,6 +10,7 @@ export const queueJoinSchema = z.object({
   type: z.literal("queue.join"),
   data: z.object({
     interests: z.array(z.string().max(50)).max(5).optional(),
+    gender: genderSchema.optional(),
   }),
 });
 
@@ -133,6 +135,7 @@ export const serverMatchFoundSchema = z.object({
     roomId: z.string(),
     commonInterests: z.array(z.string()).optional(),
     initiator: z.boolean(),
+    partnerGender: genderSchema.optional(),
   }),
 });
 

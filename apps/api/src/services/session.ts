@@ -1,8 +1,8 @@
 import { AnonymousSession, type IAnonymousSession, BanRecord } from "@owly/database";
+import { REDIS_KEYS, type Gender } from "@owly/shared";
 import { generateSessionToken, hashToken, hashIP } from "../lib/token.js";
 import { env } from "../env.js";
 import { redis } from "../lib/redis.js";
-import { REDIS_KEYS } from "@owly/shared";
 
 export interface CreateSessionResult {
   session: IAnonymousSession;
@@ -12,7 +12,8 @@ export interface CreateSessionResult {
 export async function createAnonymousSession(
   ip: string,
   userAgent?: string,
-  interests: string[] = []
+  interests: string[] = [],
+  gender?: Gender
 ): Promise<CreateSessionResult> {
   const ipHash = hashIP(ip);
 
@@ -36,6 +37,7 @@ export async function createAnonymousSession(
     ipHash,
     userAgent,
     interests,
+    ...(gender ? { gender } : {}),
     expiresAt,
     lastActiveAt: new Date(),
   });

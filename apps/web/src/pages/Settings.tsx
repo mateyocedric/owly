@@ -1,5 +1,6 @@
 import React from "react";
 import { Button, Badge } from "@owly/ui";
+import { GENDER_LABELS } from "@owly/shared";
 import { useAppStore } from "../lib/store.js";
 import { Seo } from "../components/Seo.js";
 import {
@@ -12,6 +13,7 @@ import {
 
 export function SettingsPage() {
   const session = useAppStore((s) => s.session);
+  const gender = useAppStore((s) => s.gender);
   const resetChat = useAppStore((s) => s.resetChat);
   const setSession = useAppStore((s) => s.setSession);
 
@@ -41,6 +43,10 @@ export function SettingsPage() {
             <div className="flex items-center justify-between gap-4">
               <dt className="text-muted-foreground">Age Verified</dt>
               <dd>{session?.ageVerified ? "18+ Confirmed" : "Not Verified"}</dd>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <dt className="text-muted-foreground">Gender</dt>
+              <dd>{gender ? GENDER_LABELS[gender] : "Not set"}</dd>
             </div>
             <div className="flex items-center justify-between gap-4">
               <dt className="text-muted-foreground">Interests</dt>

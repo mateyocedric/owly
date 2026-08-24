@@ -16,9 +16,10 @@ export function InterestSelectPage() {
   const interests = useAppStore((s) => s.interests);
   const setInterests = useAppStore((s) => s.setInterests);
   const ageVerified = useAppStore((s) => s.ageVerified);
+  const gender = useAppStore((s) => s.gender);
 
   const handleStart = () => {
-    if (!ageVerified) {
+    if (!ageVerified || !gender) {
       navigate("/age-gate");
     } else {
       navigate("/chat");

@@ -1,6 +1,6 @@
 import React, { memo, useCallback, useEffect, useRef, useState } from "react";
 import { Mic, MicOff, Video, VideoOff, Loader2 } from "lucide-react";
-import type { ChatReactionId } from "@owly/shared";
+import { GENDER_LABELS, type ChatReactionId, type Gender } from "@owly/shared";
 import type { VideoStatus } from "../../hooks/useWebRTC.js";
 import { ViewSwitcher, type VideoPrimaryView } from "./ViewSwitcher.js";
 import { ReactionBar } from "./ReactionBar.js";
@@ -33,6 +33,8 @@ interface VideoPanelProps {
   partnerMediaAvailable?: boolean;
   onToggleCamera: () => void;
   onToggleMic: () => void;
+  localGender?: Gender | null;
+  partnerGender?: Gender | null;
   remoteEmptyLabel?: string;
   reactionsEnabled?: boolean;
   reactionBursts?: ReactionBurst[];
@@ -114,6 +116,8 @@ export const VideoPanel = memo(function VideoPanel({
   partnerMediaAvailable = true,
   onToggleCamera,
   onToggleMic,
+  localGender = null,
+  partnerGender = null,
   remoteEmptyLabel,
   reactionsEnabled = false,
   reactionBursts = [],
@@ -123,6 +127,13 @@ export const VideoPanel = memo(function VideoPanel({
   const [primaryView, setPrimaryView] = useState<VideoPrimaryView>("remote");
   const [pipExpanded, setPipExpanded] = useState(false);
   const selfPrimary = primaryView === "self";
+
+  const selfLabel = localGender
+    ? `You · ${GENDER_LABELS[localGender]}`
+    : "You";
+  const strangerBase = partnerGender
+    ? `Stranger · ${GENDER_LABELS[partnerGender]}`
+    : "Stranger";
 
   const switchView = useCallback(() => {
     setPrimaryView((current) => (current === "remote" ? "self" : "remote"));
@@ -161,7 +172,7 @@ export const VideoPanel = memo(function VideoPanel({
       >
         <VideoTile
           stream={remoteStream}
-          label={partnerMicOn ? "Stranger" : "Stranger (muted)"}
+          label={partnerMicOn ? strangerBase : `${strangerBase} (muted)`}
           emptyLabel={
             remoteEmptyLabel
               ? remoteEmptyLabel
@@ -192,7 +203,7 @@ export const VideoPanel = memo(function VideoPanel({
           muted
           mirror
           framed={!selfPrimary}
-          label="You"
+          label={selfLabel}
           emptyLabel={
             status === "permission_denied"
               ? "Camera blocked"

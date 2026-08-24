@@ -1,6 +1,14 @@
 import { z } from "zod";
+import { GENDERS } from "../constants.js";
 
 // ─── Session API ─────────────────────────────────────────────────────────────
+
+export const createSessionRequestSchema = z.object({
+  interests: z.array(z.string().max(50)).max(5).optional(),
+  gender: z.enum(GENDERS).optional(),
+});
+
+export type CreateSessionRequest = z.infer<typeof createSessionRequestSchema>;
 
 export const createSessionResponseSchema = z.object({
   sessionId: z.string(),

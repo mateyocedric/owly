@@ -22,6 +22,31 @@ describe("WebSocket Event Contracts", () => {
     expect(parsed.success).toBe(true);
   });
 
+  it("validates client queue.join event with gender", () => {
+    const event = {
+      type: "queue.join",
+      data: {
+        interests: ["gaming"],
+        gender: "female",
+      },
+    };
+
+    const parsed = clientEventSchema.safeParse(event);
+    expect(parsed.success).toBe(true);
+  });
+
+  it("rejects client queue.join with an invalid gender", () => {
+    const event = {
+      type: "queue.join",
+      data: {
+        gender: "prefer_not_to_say",
+      },
+    };
+
+    const parsed = clientEventSchema.safeParse(event);
+    expect(parsed.success).toBe(false);
+  });
+
   it("rejects client queue.join with more than 5 interests", () => {
     const event = {
       type: "queue.join",
@@ -65,6 +90,21 @@ describe("WebSocket Event Contracts", () => {
         roomId: "room_12345",
         commonInterests: ["coding"],
         initiator: true,
+      },
+    };
+
+    const parsed = serverEventSchema.safeParse(event);
+    expect(parsed.success).toBe(true);
+  });
+
+  it("validates server match.found event with partnerGender", () => {
+    const event = {
+      type: "match.found",
+      data: {
+        roomId: "room_12345",
+        commonInterests: ["coding"],
+        initiator: false,
+        partnerGender: "other",
       },
     };
 

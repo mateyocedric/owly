@@ -1,3 +1,5 @@
+export type { Gender } from "../constants.js";
+
 export type ConnectionState =
   | "idle"
   | "finding"

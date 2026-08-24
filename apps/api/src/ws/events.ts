@@ -2,6 +2,7 @@ import type { ServerWebSocket } from "bun";
 import {
   clientEventSchema,
   type ClientEvent,
+  type Gender,
   type ServerEvent,
   RATE_LIMITS,
   REDIS_KEYS,
@@ -101,7 +102,7 @@ export async function handleClientEvent(
     }
 
     case "queue.join": {
-      await handleQueueJoin(ws, parsed.data?.interests);
+      await handleQueueJoin(ws, parsed.data?.interests, parsed.data?.gender);
       break;
     }
 
@@ -219,9 +220,13 @@ async function runGeneralFallback(sessionId: string) {
 
 async function handleQueueJoin(
   ws: ServerWebSocket<WSContextData>,
-  interests?: string[]
+  interests?: string[],
+  gender?: Gender
 ) {
   const { sessionId } = ws.data;
+  if (gender) {
+    ws.data.gender = gender;
+  }
   const state = await getUserState(sessionId);
 
   // If already queued, notify position
@@ -304,11 +309,21 @@ async function establishMatch(
   // u1 is the WebRTC offer initiator to avoid glare
   connectionManager.send(u1, {
     type: "match.found",
-    data: { roomId, commonInterests, initiator: true },
+    data: {
+      roomId,
+      commonInterests,
+      initiator: true,
+      partnerGender: ws2?.data.gender,
+    },
   });
   connectionManager.send(u2, {
     type: "match.found",
-    data: { roomId, commonInterests, initiator: false },
+    data: {
+      roomId,
+      commonInterests,
+      initiator: false,
+      partnerGender: ws1?.data.gender,
+    },
   });
 
   logEvent({

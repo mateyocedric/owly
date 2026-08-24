@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { GENDER_LABELS, type Gender } from "@owly/shared";
 import { useChat } from "../hooks/useChat.js";
 import { MessageList } from "../components/chat/MessageList.js";
 import { MessageInput } from "../components/chat/MessageInput.js";
@@ -18,13 +19,20 @@ import { Seo } from "../components/Seo.js";
 import { OwlyLogo } from "../components/brand/OwlyLogo.js";
 import { GhostButton, PageContainer } from "../components/design/index.js";
 
+function GenderChip({ gender }: { gender: Gender | null }) {
+  if (!gender) return null;
+  return <span className="sx-chip shrink-0">{GENDER_LABELS[gender]}</span>;
+}
+
 export function ChatPage() {
   const navigate = useNavigate();
   const ageVerified = useAppStore((s) => s.ageVerified);
+  const gender = useAppStore((s) => s.gender);
   const {
     session,
     connectionState,
     commonInterests,
+    partnerGender,
     messages,
     partnerTyping,
     sendCooldownSeconds,
@@ -54,10 +62,10 @@ export function ChatPage() {
   const [reportModalOpen, setReportModalOpen] = useState(false);
 
   useEffect(() => {
-    if (!ageVerified) {
+    if (!ageVerified || !gender) {
       navigate("/age-gate");
     }
-  }, [ageVerified, navigate]);
+  }, [ageVerified, gender, navigate]);
 
   const isConnected = connectionState === "connected";
   const isFinding = connectionState === "finding";
@@ -67,6 +75,7 @@ export function ChatPage() {
   const isPartnerLeft = connectionState === "partner_left";
   const isPreSession = isIdle || isError || isFinding || isDisconnected;
   const showVideo = isConnected || isPartnerLeft;
+  const chromeGender = isConnected ? partnerGender : gender;
   const isRequestingMedia = videoStatus === "requesting";
   const startChatLabel = isRequestingMedia ? "Allow camera..." : "Start Chatting";
   const tryAgainLabel = isRequestingMedia ? "Allow camera..." : "Try Again";
@@ -89,7 +98,10 @@ export function ChatPage() {
         <PageContainer wide className="flex min-h-0 w-full flex-1 flex-col !py-4">
         <div className="mb-3 flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
           <div className="flex w-full min-w-0 flex-1 items-center justify-between gap-3">
-            <StatusIndicator state={connectionState} commonInterests={commonInterests} />
+            <div className="flex min-w-0 items-center gap-2">
+              <StatusIndicator state={connectionState} commonInterests={commonInterests} />
+              <GenderChip gender={chromeGender} />
+            </div>
             <OnlineCountBadge count={onlineCount} className="shrink-0" />
           </div>
           <SafetyReminder />
@@ -99,6 +111,7 @@ export function ChatPage() {
           {isFinding ? (
             <WaitingScreen
               interests={session?.interests}
+              gender={gender}
               onlineCount={onlineCount}
               onCancel={stopChat}
             />
@@ -182,6 +195,8 @@ export function ChatPage() {
                   partnerCameraOn={partnerCameraOn}
                   partnerMicOn={partnerMicOn}
                   partnerMediaAvailable={partnerMediaAvailable}
+                  localGender={gender}
+                  partnerGender={partnerGender}
                   onToggleCamera={toggleCamera}
                   onToggleMic={toggleMic}
                   remoteEmptyLabel={isPartnerLeft ? "Partner disconnected" : undefined}
@@ -214,11 +229,14 @@ export function ChatPage() {
           chrome={
             <div>
               <div className="flex w-full items-center justify-between gap-3 px-3 pt-1 lg:px-4">
-                <StatusIndicator
-                  state={connectionState}
-                  commonInterests={commonInterests}
-                  className="min-w-0 border-white/20 bg-black/50 text-white/90 backdrop-blur-sm lg:border-[var(--sx-hairline-on-dark)] lg:bg-black/40 lg:text-[var(--sx-on-primary)]"
-                />
+                <div className="flex min-w-0 items-center gap-2">
+                  <StatusIndicator
+                    state={connectionState}
+                    commonInterests={commonInterests}
+                    className="min-w-0 border-white/20 bg-black/50 text-white/90 backdrop-blur-sm lg:border-[var(--sx-hairline-on-dark)] lg:bg-black/40 lg:text-[var(--sx-on-primary)]"
+                  />
+                  <GenderChip gender={chromeGender} />
+                </div>
                 <OnlineCountBadge
                   count={onlineCount}
                   className="shrink-0 text-white/70 lg:text-[var(--sx-on-primary-mute)]"

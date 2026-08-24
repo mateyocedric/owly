@@ -1,15 +1,18 @@
 import { X } from "lucide-react";
+import { GENDER_LABELS, type Gender } from "@owly/shared";
 import { OwlyLogo } from "../brand/OwlyLogo.js";
 import { GhostButton } from "../design/index.js";
 
 interface WaitingScreenProps {
   interests?: string[];
+  gender?: Gender | null;
   onlineCount?: number | null;
   onCancel: () => void;
 }
 
 export function WaitingScreen({
   interests = [],
+  gender = null,
   onlineCount = null,
   onCancel,
 }: WaitingScreenProps) {
@@ -34,14 +37,19 @@ export function WaitingScreen({
         </p>
       </div>
 
-      {interests.length > 0 && (
+      {(gender || interests.length > 0) && (
         <div className="flex flex-wrap items-center justify-center gap-1.5">
-          <span className="sx-caption uppercase tracking-wider">Topics:</span>
-          {interests.map((interest) => (
-            <span key={interest} className="sx-chip">
-              #{interest}
-            </span>
-          ))}
+          {gender ? <span className="sx-chip">{GENDER_LABELS[gender]}</span> : null}
+          {interests.length > 0 && (
+            <>
+              <span className="sx-caption uppercase tracking-wider">Topics:</span>
+              {interests.map((interest) => (
+                <span key={interest} className="sx-chip">
+                  #{interest}
+                </span>
+              ))}
+            </>
+          )}
         </div>
       )}
 

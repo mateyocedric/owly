@@ -54,9 +54,10 @@ const FAQ_JSON_LD = {
 export function LandingPage() {
   const navigate = useNavigate();
   const ageVerified = useAppStore((s) => s.ageVerified);
+  const gender = useAppStore((s) => s.gender);
 
   const handleStart = () => {
-    if (ageVerified) {
+    if (ageVerified && gender) {
       navigate("/chat");
     } else {
       navigate("/age-gate");

@@ -1,15 +1,11 @@
 import { Hono } from "hono";
 import { setCookie } from "hono/cookie";
-import { z } from "zod";
+import { createSessionRequestSchema, type Gender } from "@owly/shared";
 import { createAnonymousSession } from "../services/session.js";
 import { env } from "../env.js";
 import { createRateLimiter } from "../middleware/rate-limit.js";
 
 export const sessionRouter = new Hono();
-
-const createSessionBodySchema = z.object({
-  interests: z.array(z.string().max(50)).max(5).optional(),
-});
 
 sessionRouter.post(
   "/session",
@@ -29,11 +25,15 @@ sessionRouter.post(
     const userAgent = c.req.header("user-agent");
 
     let interests: string[] = [];
+    let gender: Gender | undefined;
     try {
       const body = await c.req.json();
-      const parsed = createSessionBodySchema.safeParse(body);
-      if (parsed.success && parsed.data.interests) {
-        interests = parsed.data.interests;
+      const parsed = createSessionRequestSchema.safeParse(body);
+      if (parsed.success) {
+        if (parsed.data.interests) {
+          interests = parsed.data.interests;
+        }
+        gender = parsed.data.gender;
       }
     } catch {
       // Empty body is allowed
@@ -43,7 +43,8 @@ sessionRouter.post(
       const { session, rawToken } = await createAnonymousSession(
         ip,
         userAgent,
-        interests
+        interests,
+        gender
       );
 
       const crossOrigin = Boolean(env.CORS_ORIGINS);

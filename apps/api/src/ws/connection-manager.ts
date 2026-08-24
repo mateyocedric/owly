@@ -1,5 +1,5 @@
 import type { ServerWebSocket } from "bun";
-import type { ServerEvent } from "@owly/shared";
+import type { Gender, ServerEvent } from "@owly/shared";
 
 export interface WSContextData {
   sessionId: string;
@@ -7,6 +7,7 @@ export interface WSContextData {
   userAgent?: string;
   roomId?: string;
   interests?: string[];
+  gender?: Gender;
   lastMessageTime?: number;
   messagePenaltyUntil?: number;
   recentMessageTimes?: number[];
