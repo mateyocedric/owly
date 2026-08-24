@@ -1,7 +1,14 @@
 const DEFAULT_OWLY_EMAIL = "support@owly.fun";
+const DEFAULT_SITE_URL = "https://owly.fun";
 
 function trimSlash(value: string): string {
   return value.replace(/\/+$/, "");
+}
+
+export function siteUrl(path = "/"): string {
+  const base = trimSlash(import.meta.env.VITE_SITE_URL?.trim() || DEFAULT_SITE_URL);
+  if (!path || path === "/") return `${base}/`;
+  return `${base}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
 export function owlyEmail(): string {

@@ -12,6 +12,7 @@ import { SafetyReminder } from "../components/chat/SafetyReminder.js";
 import { ReportModal } from "../components/chat/ReportModal.js";
 import { WaitingScreen } from "../components/matching/WaitingScreen.js";
 import { useAppStore } from "../lib/store.js";
+import { Seo } from "../components/Seo.js";
 import { GhostButton, PageContainer } from "../components/design/index.js";
 
 export function ChatPage() {
@@ -67,9 +68,13 @@ export function ChatPage() {
     />
   );
 
+  const seo = <Seo title="Chat — Owly" path="/chat" noindex />;
+
   if (isPreSession) {
     return (
-      <PageContainer wide className="flex min-h-0 w-full flex-1 flex-col !py-4">
+      <>
+        {seo}
+        <PageContainer wide className="flex min-h-0 w-full flex-1 flex-col !py-4">
         <div className="mb-3 flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
           <StatusIndicator state={connectionState} commonInterests={commonInterests} />
           <SafetyReminder />
@@ -118,12 +123,14 @@ export function ChatPage() {
         </div>
 
         {reportModal}
-      </PageContainer>
+        </PageContainer>
+      </>
     );
   }
 
   return (
     <>
+      {seo}
       <div className="flex h-full min-h-0 flex-1 flex-col">
         <VideoChatLayout
           video={

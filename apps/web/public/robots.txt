@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Allow: /privacy
+Allow: /terms
+Allow: /guidelines
+Disallow: /chat
+Disallow: /admin
+Disallow: /settings
+Disallow: /age-gate
+Disallow: /interests
+Disallow: /components
+
+Sitemap: https://owly.fun/sitemap.xml

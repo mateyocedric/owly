@@ -6,6 +6,7 @@ import { AdminDashboardMetrics } from "../components/admin/Dashboard.js";
 import { ReportsList, type ReportItem } from "../components/admin/ReportsList.js";
 import { UserManagement, type SessionItem } from "../components/admin/UserManagement.js";
 import { BannedWordsConfig } from "../components/admin/BannedWords.js";
+import { Seo } from "../components/Seo.js";
 import {
   LightSurface,
   PageContainer,
@@ -126,6 +127,7 @@ export function AdminPage() {
   if (!token) {
     return (
       <PageContainer narrow>
+        <Seo title="Staff Portal — Owly" path="/admin" noindex />
         <PagePanel>
           <PanelHeader title="Staff Login" description="Authorized personnel only" />
           <LightSurface>
@@ -171,6 +173,7 @@ export function AdminPage() {
 
   return (
     <PageContainer wide className="space-y-8">
+      <Seo title="Staff Portal — Owly" path="/admin" noindex />
       <div className="flex flex-col justify-between gap-4 border-b border-[var(--sx-hairline-on-dark)] pb-4 sm:flex-row sm:items-end">
         <div className="space-y-2">
           <p className="sx-eyebrow">Staff</p>

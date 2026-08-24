@@ -4,6 +4,7 @@ import { ArrowRight } from "lucide-react";
 import { Button } from "@owly/ui";
 import { InterestTags } from "../components/matching/InterestTags.js";
 import { useAppStore } from "../lib/store.js";
+import { Seo } from "../components/Seo.js";
 import {
   GhostButtonLight,
   LightSurface,
@@ -28,6 +29,7 @@ export function InterestSelectPage() {
 
   return (
     <PageContainer narrow>
+      <Seo title="Choose Interests — Owly" path="/interests" noindex />
       <PagePanel>
         <PanelHeader
           title="Choose Interests"

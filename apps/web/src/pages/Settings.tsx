@@ -1,6 +1,7 @@
 import React from "react";
 import { Button, Badge } from "@owly/ui";
 import { useAppStore } from "../lib/store.js";
+import { Seo } from "../components/Seo.js";
 import {
   BackLink,
   LightSurface,
@@ -22,6 +23,7 @@ export function SettingsPage() {
 
   return (
     <PageContainer narrow>
+      <Seo title="Session Settings — Owly" path="/settings" noindex />
       <PagePanel>
         <PanelHeader
           title="Session Settings"

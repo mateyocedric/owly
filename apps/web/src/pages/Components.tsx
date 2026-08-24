@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { CATALOG_GROUPS, CATALOG_SECTIONS } from "./components/catalog-data.js";
 import { CatalogDemo } from "./components/catalog-demos.js";
+import { Seo } from "../components/Seo.js";
 import {
   CatalogChip,
   CatalogEmptyState,
@@ -39,6 +40,7 @@ export function ComponentsPage() {
 
   return (
     <CatalogPage>
+      <Seo title="Component Catalog — Owly" path="/components" noindex />
       <CatalogHero
         title="Component Catalog"
         description={

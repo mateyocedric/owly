@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowRight, AlertTriangle, ShieldAlert } from "lucide-react";
 import { Checkbox } from "@owly/ui";
 import { useAppStore } from "../lib/store.js";
+import { Seo } from "../components/Seo.js";
 import {
   GhostButton,
   PageContainer,
@@ -32,6 +33,7 @@ export function AgeGatePage() {
 
   return (
     <PageContainer narrow>
+      <Seo title="Age Verification — Owly" path="/age-gate" noindex />
       <PagePanel>
         <PanelHeader
           title="Age Verification"

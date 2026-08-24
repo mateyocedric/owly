@@ -1,10 +1,16 @@
 import React from "react";
 import { BackLink, PageContainer, PageHeader, ProseSection } from "../components/design/index.js";
+import { Seo } from "../components/Seo.js";
 import { owlyEmail, owlyMailto } from "../lib/config.js";
 
 export function PrivacyPage() {
   return (
     <PageContainer className="space-y-8">
+      <Seo
+        title="Privacy Policy — Owly"
+        description="How Owly handles privacy: minimal data collection, ephemeral chats, and no PII shared with chat partners."
+        path="/privacy"
+      />
       <PageHeader
         eyebrow="Legal"
         title="Privacy Policy"

@@ -12,7 +12,7 @@ export function Header() {
           <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white p-1">
             <img
               src="/owly-vector.svg"
-              alt=""
+              alt="Owly"
               draggable={false}
               className="block size-full object-contain"
             />
