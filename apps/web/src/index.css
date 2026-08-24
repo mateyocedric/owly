@@ -11,6 +11,11 @@ body,
   min-height: 100dvh;
 }
 
+html {
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
 body {
   font-family: var(--sx-font-body, Inter, Arial, Verdana, sans-serif);
 }
@@ -20,6 +25,7 @@ html.owly-chat-lock body,
 html.owly-chat-lock #root {
   height: 100dvh;
   overflow: hidden;
+  scrollbar-gutter: stable;
 }
 
 /* Custom scrollbar */
