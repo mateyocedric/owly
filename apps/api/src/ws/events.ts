@@ -21,11 +21,7 @@ import {
   getQueuePosition,
 } from "../matchmaking/queue.js";
 import { normalizeInterest } from "../matchmaking/policy.js";
-import {
-  tryAtomicMatch,
-  restoreLiveOrDrop,
-} from "../matchmaking/matcher.js";
-import { hasLiveSocket } from "../matchmaking/liveness.js";
+import { tryAtomicMatch, restoreQueuedSession } from "../matchmaking/matcher.js";
 import { tryInterestMatch } from "../matchmaking/interest-matcher.js";
 import {
   createChatRoom,
@@ -222,23 +218,6 @@ async function runGeneralFallback(sessionId: string) {
   }
 }
 
-async function attemptMatch(sessionId: string, interests: string[]) {
-  if (interests.length > 0) {
-    const interestMatch = await tryInterestMatch(sessionId, interests);
-    if (interestMatch) {
-      await establishMatch(interestMatch.pair, interestMatch.commonInterests);
-      return;
-    }
-    scheduleGeneralFallback(sessionId);
-    return;
-  }
-
-  const generalMatch = await tryAtomicMatch(sessionId);
-  if (generalMatch) {
-    await establishMatch(generalMatch);
-  }
-}
-
 async function handleQueueJoin(
   ws: ServerWebSocket<WSContextData>,
   interests?: string[],
@@ -248,16 +227,12 @@ async function handleQueueJoin(
   if (gender) {
     ws.data.gender = gender;
   }
-  ws.data.interests = (interests || []).map(normalizeInterest).filter(Boolean);
   const state = await getUserState(sessionId);
 
-  // Reconnect while still queued: refresh socket metadata and try to pair.
+  // If already queued, notify position
   if (state.state === "queued") {
-    const hasInterests = ws.data.interests.length > 0;
-    await addToQueue(sessionId, ws.data.interests, { general: !hasInterests });
     const pos = await getQueuePosition(sessionId);
-    ws.send(JSON.stringify({ type: "queue.waiting", data: { position: pos || 1 } }));
-    await attemptMatch(sessionId, ws.data.interests);
+    ws.send(JSON.stringify({ type: "queue.waiting", data: { position: pos } }));
     return;
   }
 
@@ -267,6 +242,7 @@ async function handleQueueJoin(
   }
 
   clearGeneralFallbackTimer(sessionId);
+  ws.data.interests = (interests || []).map(normalizeInterest).filter(Boolean);
   await setUserState(sessionId, "queued", { queuedAt: Date.now() });
 
   const hasInterests = ws.data.interests.length > 0;
@@ -282,7 +258,20 @@ async function handleQueueJoin(
 
   logEvent({ eventType: "queue_join", sessionId, details: { interests } });
 
-  await attemptMatch(sessionId, ws.data.interests);
+  if (hasInterests) {
+    const interestMatch = await tryInterestMatch(sessionId, ws.data.interests);
+    if (interestMatch) {
+      await establishMatch(interestMatch.pair, interestMatch.commonInterests);
+      return;
+    }
+    scheduleGeneralFallback(sessionId);
+    return;
+  }
+
+  const generalMatch = await tryAtomicMatch(sessionId);
+  if (generalMatch) {
+    await establishMatch(generalMatch);
+  }
 }
 
 async function establishMatch(
@@ -293,20 +282,8 @@ async function establishMatch(
   const [s1, s2] = await Promise.all([getUserState(u1), getUserState(u2)]);
 
   if (s1.state !== "queued" || s2.state !== "queued") {
-    if (s1.state === "queued") await restoreLiveOrDrop(u1);
-    if (s2.state === "queued") await restoreLiveOrDrop(u2);
-    return;
-  }
-
-  if (!hasLiveSocket(u1) || !hasLiveSocket(u2)) {
-    logEvent({
-      eventType: "match_aborted_offline_partner",
-      details: {
-        users: pair,
-        offline: [u1, u2].filter((id) => !hasLiveSocket(id)),
-      },
-    });
-    await Promise.all([restoreLiveOrDrop(u1), restoreLiveOrDrop(u2)]);
+    if (s1.state === "queued") await restoreQueuedSession(u1);
+    if (s2.state === "queued") await restoreQueuedSession(u2);
     return;
   }
 

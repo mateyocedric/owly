@@ -357,6 +357,7 @@ export function useChat() {
       wsClientRef.current.disconnect();
       wsClientRef.current = null;
       setWebrtcInitiator(null);
+      store.setSession(null);
       store.setConnectionState("error");
       return null;
     }

@@ -2,8 +2,7 @@ import { redis } from "../lib/redis.js";
 import { REDIS_KEYS } from "@owly/shared";
 import { ATOMIC_INTEREST_MATCH_SCRIPT } from "../lib/lua-scripts.js";
 import { isBlocked } from "../services/block.js";
-import { restoreLiveOrDrop } from "./matcher.js";
-import { matchingOnlineCutoff } from "./liveness.js";
+import { restoreQueuedSession } from "./matcher.js";
 import { normalizeInterest } from "./policy.js";
 
 export async function tryInterestMatch(
@@ -19,14 +18,12 @@ export async function tryInterestMatch(
     const interestKey = `${REDIS_KEYS.QUEUE_INTEREST}${slug}`;
     const result = (await redis.eval(
       ATOMIC_INTEREST_MATCH_SCRIPT,
-      3,
+      2,
       interestKey,
       REDIS_KEYS.QUEUE_GENERAL,
-      REDIS_KEYS.ONLINE_SESSIONS,
       currentSessionId,
       REDIS_KEYS.QUEUE_INTEREST,
       REDIS_KEYS.QUEUE_SESSION_INTERESTS,
-      String(matchingOnlineCutoff()),
       ...[...skipped]
     )) as [string, string] | null;
 
@@ -41,8 +38,8 @@ export async function tryInterestMatch(
     if (blocked) {
       skipped.add(partner);
       await Promise.all([
-        restoreLiveOrDrop(currentSessionId),
-        restoreLiveOrDrop(partner),
+        restoreQueuedSession(currentSessionId),
+        restoreQueuedSession(partner),
       ]);
       continue;
     }
