@@ -33,7 +33,9 @@ export function useChat() {
   }, []);
 
   const videoEnabled =
-    store.connectionState === "connected" && !!store.roomId;
+    store.connectionState === "connected" &&
+    !!store.roomId &&
+    webrtcInitiator !== null;
 
   const video = useWebRTC({
     enabled: videoEnabled,
@@ -367,7 +369,10 @@ export function useChat() {
   }, []);
 
   const nextChat = useCallback(() => {
-    if (!wsClientRef.current) return;
+    if (!wsClientRef.current) {
+      void joinQueue();
+      return;
+    }
     joiningRef.current = true;
     clearReconnectSoon();
     clearAutoQueueTimer();
@@ -378,10 +383,14 @@ export function useChat() {
     store.setConnectionState("finding");
     store.clearMessages();
     wsClientRef.current.send({ type: "chat.next" });
-  }, [store, clearAutoQueueTimer, clearReconnectSoon, clearSendCooldown]);
+  }, [store, joinQueue, clearAutoQueueTimer, clearReconnectSoon, clearSendCooldown]);
 
   const stopChat = useCallback(() => {
-    if (!wsClientRef.current) return;
+    if (!wsClientRef.current) {
+      setWebrtcInitiator(null);
+      useAppStore.getState().resetChat();
+      return;
+    }
     joiningRef.current = false;
     clearReconnectSoon();
     clearAutoQueueTimer();
@@ -435,6 +444,14 @@ export function useChat() {
       if (autoQueueTimerRef.current) clearTimeout(autoQueueTimerRef.current);
       if (reconnectSoonRef.current) clearTimeout(reconnectSoonRef.current);
       if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
+      joiningRef.current = false;
+      findingReconnectsRef.current = 0;
+      const client = wsClientRef.current;
+      wsClientRef.current = null;
+      if (client) {
+        client.disconnect();
+      }
+      useAppStore.getState().resetChat();
     };
   }, []);
 
