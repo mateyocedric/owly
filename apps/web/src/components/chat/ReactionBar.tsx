@@ -11,14 +11,20 @@ const reactionButtonClass =
 interface ReactionBarProps {
   disabled?: boolean;
   onReact: (id: ChatReactionId) => void;
+  className?: string;
 }
 
 export const ReactionBar = memo(function ReactionBar({
   disabled = false,
   onReact,
+  className = "",
 }: ReactionBarProps) {
   return (
-    <div className="flex items-center gap-1.5" role="group" aria-label="Reactions">
+    <div
+      className={`flex items-center gap-1.5 ${className}`.trim()}
+      role="group"
+      aria-label="Reactions"
+    >
       {CHAT_REACTION_IDS.map((id) => {
         const { emoji, label } = CHAT_REACTION_BY_ID[id];
         return (

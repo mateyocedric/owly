@@ -5,9 +5,16 @@ interface VideoChatLayoutProps {
   chrome: React.ReactNode;
   messages: React.ReactNode;
   input: React.ReactNode;
+  reactions?: React.ReactNode;
 }
 
-export function VideoChatLayout({ video, chrome, messages, input }: VideoChatLayoutProps) {
+export function VideoChatLayout({
+  video,
+  chrome,
+  messages,
+  input,
+  reactions,
+}: VideoChatLayoutProps) {
   return (
     <div className="relative flex h-full min-h-0 flex-1 flex-col lg:flex-row">
       <div className="absolute inset-0 min-h-0 lg:relative lg:inset-auto lg:flex-1">
@@ -24,6 +31,9 @@ export function VideoChatLayout({ video, chrome, messages, input }: VideoChatLay
         <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{messages}</div>
           <div className="mt-auto shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:pb-0">
+            {reactions ? (
+              <div className="flex justify-center px-3 pb-1.5 lg:hidden">{reactions}</div>
+            ) : null}
             {input}
           </div>
         </div>

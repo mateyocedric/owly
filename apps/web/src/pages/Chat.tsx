@@ -7,6 +7,7 @@ import { MessageInput } from "../components/chat/MessageInput.js";
 import { ChatControls } from "../components/chat/ChatControls.js";
 import { VideoPanel } from "../components/chat/VideoPanel.js";
 import { VideoChatLayout } from "../components/chat/VideoChatLayout.js";
+import { ReactionBar } from "../components/chat/ReactionBar.js";
 import { StatusIndicator } from "../components/chat/StatusIndicator.js";
 import { SafetyReminder } from "../components/chat/SafetyReminder.js";
 import { ReportModal } from "../components/chat/ReportModal.js";
@@ -197,6 +198,9 @@ export function ChatPage() {
             </div>
           }
           messages={<MessageList messages={messages} partnerTyping={partnerTyping} />}
+          reactions={
+            <ReactionBar disabled={!isConnected} onReact={sendReaction} />
+          }
           input={
             <MessageInput
               onSend={sendMessage}

@@ -230,7 +230,11 @@ export const VideoPanel = memo(function VideoPanel({
           {cameraOn ? <Video className="size-4" /> : <VideoOff className="size-4" />}
         </button>
         {onSendReaction ? (
-          <ReactionBar disabled={!reactionsEnabled} onReact={handleReact} />
+          <ReactionBar
+            className="hidden lg:flex"
+            disabled={!reactionsEnabled}
+            onReact={handleReact}
+          />
         ) : null}
       </div>
 
