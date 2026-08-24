@@ -1,13 +1,11 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
-import { Button } from "@owly/ui";
 import { InterestTags } from "../components/matching/InterestTags.js";
 import { useAppStore } from "../lib/store.js";
 import { Seo } from "../components/Seo.js";
 import {
-  GhostButtonLight,
-  LightSurface,
+  GhostButton,
   PageContainer,
   PagePanel,
   PanelHeader,
@@ -36,8 +34,8 @@ export function InterestSelectPage() {
           description="Match with people who share your topics"
         />
 
-        <LightSurface>
-          <p className="text-sm text-muted-foreground leading-relaxed">
+        <div className="space-y-5">
+          <p className="sx-caption leading-relaxed">
             Adding topic tags prioritizes matching with people looking for the same topics. If no
             one with matching tags is waiting, we fall back to a random match after a few seconds.
           </p>
@@ -48,24 +46,23 @@ export function InterestSelectPage() {
             max={5}
           />
 
-          <div className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row">
-            <Button
+          <div className="flex flex-col gap-3 border-t border-[var(--sx-hairline-on-dark)] pt-4 sm:flex-row">
+            <GhostButton
+              className="flex-1 justify-center"
               onClick={() => {
                 setInterests([]);
                 handleStart();
               }}
-              variant="outline"
-              className="flex-1"
             >
               Skip — Random Match
-            </Button>
+            </GhostButton>
 
-            <GhostButtonLight onClick={handleStart} className="flex-1 justify-center">
+            <button type="button" className="sx-btn-filled-cool flex-1" onClick={handleStart}>
               Save &amp; Start
               <ArrowRight className="size-4" />
-            </GhostButtonLight>
+            </button>
           </div>
-        </LightSurface>
+        </div>
       </PagePanel>
     </PageContainer>
   );

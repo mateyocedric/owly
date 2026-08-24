@@ -9,6 +9,7 @@ import { healthRouter } from "./routes/health.js";
 import { sessionRouter } from "./routes/session.js";
 import { reportRouter } from "./routes/report.js";
 import { interestsRouter } from "./routes/interests.js";
+import { statsRouter } from "./routes/stats.js";
 import { adminRouter } from "./routes/admin/index.js";
 import { websocketHandler } from "./ws/handler.js";
 import { validateSessionToken } from "./services/session.js";
@@ -30,6 +31,7 @@ app.route("/", healthRouter);
 app.route("/api", sessionRouter);
 app.route("/api", reportRouter);
 app.route("/api", interestsRouter);
+app.route("/api", statsRouter);
 app.route("/api/admin", adminRouter);
 
 if (env.NODE_ENV === "production") {

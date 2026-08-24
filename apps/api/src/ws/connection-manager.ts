@@ -19,11 +19,24 @@ class ConnectionManager {
   private connections = new Map<string, ServerWebSocket<WSContextData>>();
 
   public register(sessionId: string, ws: ServerWebSocket<WSContextData>) {
+    const existing = this.connections.get(sessionId);
     this.connections.set(sessionId, ws);
+    if (existing && existing !== ws) {
+      existing.close(4000, "Replaced by newer connection");
+    }
   }
 
-  public unregister(sessionId: string) {
+  /** Returns true when this socket was the active connection and the session went offline. */
+  public unregister(
+    sessionId: string,
+    ws: ServerWebSocket<WSContextData>
+  ): boolean {
+    const current = this.connections.get(sessionId);
+    if (current !== ws) {
+      return false;
+    }
     this.connections.delete(sessionId);
+    return true;
   }
 
   public get(sessionId: string): ServerWebSocket<WSContextData> | undefined {

@@ -3,13 +3,20 @@ import { GhostButton } from "../design/index.js";
 
 interface WaitingScreenProps {
   interests?: string[];
+  onlineCount?: number | null;
   onCancel: () => void;
 }
 
 export function WaitingScreen({
   interests = [],
+  onlineCount = null,
   onCancel,
 }: WaitingScreenProps) {
+  const onlineLabel =
+    onlineCount != null
+      ? `${onlineCount.toLocaleString()} people online. Matching randomly.`
+      : "Looking for active users online. Matching randomly.";
+
   return (
     <div className="mx-auto my-auto flex max-w-md flex-col items-center justify-center space-y-6 p-8 text-center">
       <span className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white p-2">
@@ -29,7 +36,7 @@ export function WaitingScreen({
         <p className="sx-caption">
           {interests.length > 0
             ? "Looking for someone who shares your topics. If no one matches, you'll be paired randomly in a few seconds."
-            : "Looking for active users online. Matching randomly."}
+            : onlineLabel}
         </p>
       </div>
 

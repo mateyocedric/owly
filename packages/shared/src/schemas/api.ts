@@ -78,6 +78,14 @@ export const healthResponseSchema = z.object({
 
 export type HealthResponse = z.infer<typeof healthResponseSchema>;
 
+// ─── Stats ───────────────────────────────────────────────────────────────────
+
+export const onlineStatsResponseSchema = z.object({
+  online: z.number().int().nonnegative(),
+});
+
+export type OnlineStatsResponse = z.infer<typeof onlineStatsResponseSchema>;
+
 // ─── Interest Tags ───────────────────────────────────────────────────────────
 
 export const interestTagSchema = z.object({

@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { MessageSquare } from "lucide-react";
 import { useChat } from "../hooks/useChat.js";
 import { MessageList } from "../components/chat/MessageList.js";
 import { MessageInput } from "../components/chat/MessageInput.js";
@@ -12,9 +11,24 @@ import { StatusIndicator } from "../components/chat/StatusIndicator.js";
 import { SafetyReminder } from "../components/chat/SafetyReminder.js";
 import { ReportModal } from "../components/chat/ReportModal.js";
 import { WaitingScreen } from "../components/matching/WaitingScreen.js";
+import { OnlineCountBadge } from "../components/chat/OnlineCountBadge.js";
+import { useOnlineCount } from "../hooks/useOnlineCount.js";
 import { useAppStore } from "../lib/store.js";
 import { Seo } from "../components/Seo.js";
 import { GhostButton, PageContainer } from "../components/design/index.js";
+
+function AnimatedLogo() {
+  return (
+    <span className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white p-2">
+      <img
+        src="/owly-vector.svg"
+        alt=""
+        draggable={false}
+        className="block size-full object-contain"
+      />
+    </span>
+  );
+}
 
 export function ChatPage() {
   const navigate = useNavigate();
@@ -48,6 +62,7 @@ export function ChatPage() {
     toggleMic,
   } = useChat();
 
+  const onlineCount = useOnlineCount();
   const [reportModalOpen, setReportModalOpen] = useState(false);
 
   useEffect(() => {
@@ -81,14 +96,17 @@ export function ChatPage() {
         {seo}
         <PageContainer wide className="flex min-h-0 w-full flex-1 flex-col !py-4">
         <div className="mb-3 flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
-          <StatusIndicator state={connectionState} commonInterests={commonInterests} />
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+            <StatusIndicator state={connectionState} commonInterests={commonInterests} />
+            <OnlineCountBadge count={onlineCount} />
+          </div>
           <SafetyReminder />
         </div>
 
         <div className="sx-chat-shell flex flex-1 flex-col">
           {isIdle ? (
             <div className="flex flex-1 flex-col items-center justify-center space-y-6 p-8 text-center">
-              <MessageSquare className="size-10 text-[var(--sx-on-primary-mute)]" />
+              <AnimatedLogo />
               <div className="max-w-sm space-y-2">
                 <h3 className="sx-panel-title">Ready for a conversation?</h3>
                 <p className="sx-caption">
@@ -99,7 +117,7 @@ export function ChatPage() {
             </div>
           ) : isError ? (
             <div className="flex flex-1 flex-col items-center justify-center space-y-6 p-8 text-center">
-              <MessageSquare className="size-10 text-[var(--sx-on-primary-mute)]" />
+              <AnimatedLogo />
               <div className="max-w-sm space-y-2">
                 <h3 className="sx-panel-title">Connection error</h3>
                 <p className="sx-caption">
@@ -110,7 +128,7 @@ export function ChatPage() {
             </div>
           ) : isDisconnected ? (
             <div className="flex flex-1 flex-col items-center justify-center space-y-6 p-8 text-center">
-              <MessageSquare className="size-10 text-[var(--sx-on-primary-mute)]" />
+              <AnimatedLogo />
               <div className="max-w-sm space-y-2">
                 <h3 className="sx-panel-title">Disconnected</h3>
                 <p className="sx-caption">
@@ -122,6 +140,7 @@ export function ChatPage() {
           ) : (
             <WaitingScreen
               interests={session?.interests}
+              onlineCount={onlineCount}
               onCancel={stopChat}
             />
           )}
@@ -182,11 +201,17 @@ export function ChatPage() {
           chrome={
             <div>
               <div className="px-3 pt-1 lg:px-4">
-                <StatusIndicator
-                  state={connectionState}
-                  commonInterests={commonInterests}
-                  className="border-white/20 bg-black/50 text-white/90 backdrop-blur-sm lg:border-[var(--sx-hairline-on-dark)] lg:bg-black/40 lg:text-[var(--sx-on-primary)]"
-                />
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+                  <StatusIndicator
+                    state={connectionState}
+                    commonInterests={commonInterests}
+                    className="border-white/20 bg-black/50 text-white/90 backdrop-blur-sm lg:border-[var(--sx-hairline-on-dark)] lg:bg-black/40 lg:text-[var(--sx-on-primary)]"
+                  />
+                  <OnlineCountBadge
+                    count={onlineCount}
+                    className="text-white/70 lg:text-[var(--sx-on-primary-mute)]"
+                  />
+                </div>
               </div>
               <ChatControls
                 connectionState={connectionState}

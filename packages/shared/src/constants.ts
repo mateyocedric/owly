@@ -65,6 +65,15 @@ export const SESSION = {
   TOKEN_BYTES: 32,
 } as const;
 
+export const ONLINE_PRESENCE = {
+  /** Drop sessions with no heartbeat within this window */
+  STALE_MS: 90_000,
+  /** Shared Redis cache TTL for GET /api/stats/online */
+  COUNT_CACHE_SECONDS: 10,
+  /** Lock TTL while one instance recomputes the count */
+  COUNT_LOCK_SECONDS: 2,
+} as const;
+
 export const MODERATION = {
   /** Number of recent messages to capture in a report */
   REPORT_MESSAGE_COUNT: 20,
@@ -89,6 +98,12 @@ export const REDIS_KEYS = {
   RATE_LIMIT: "owly:ratelimit:",
   /** Presence tracking */
   PRESENCE: "owly:presence:",
+  /** Unique WebSocket-connected sessions (ZSET, score = last seen ms) */
+  ONLINE_SESSIONS: "owly:online",
+  /** Cached online count (string integer, short TTL) */
+  ONLINE_COUNT_CACHE: "owly:online:count",
+  /** Lock while recomputing online count */
+  ONLINE_COUNT_LOCK: "owly:online:count:lock",
   /** Banned words set */
   BANNED_WORDS: "owly:config:banned_words",
 } as const;

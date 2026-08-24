@@ -34,6 +34,7 @@ import {
 } from "../services/moderation.js";
 import { blockUser } from "../services/block.js";
 import { logEvent } from "../lib/logger.js";
+import { touchOnline } from "../services/online.js";
 
 export async function handleClientEvent(
   ws: ServerWebSocket<WSContextData>,
@@ -94,6 +95,7 @@ export async function handleClientEvent(
 
   switch (parsed.type) {
     case "ping": {
+      await touchOnline(sessionId);
       ws.send(JSON.stringify({ type: "pong" }));
       break;
     }

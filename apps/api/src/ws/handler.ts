@@ -1,18 +1,16 @@
 import type { ServerWebSocket, WebSocketHandler } from "bun";
 import { connectionManager, type WSContextData } from "./connection-manager.js";
 import { handleClientEvent, endCurrentRoom, clearGeneralFallbackTimer } from "./events.js";
-import { validateSessionToken } from "../services/session.js";
-import {
-  getUserState,
-  setUserState,
-} from "../matchmaking/state-machine.js";
+import { setUserState } from "../matchmaking/state-machine.js";
 import { removeFromQueue } from "../matchmaking/queue.js";
+import { markOnline, markOffline } from "../services/online.js";
 import { logEvent } from "../lib/logger.js";
 
 export const websocketHandler: WebSocketHandler<WSContextData> = {
   idleTimeout: 120,
   async open(ws: ServerWebSocket<WSContextData>) {
     connectionManager.register(ws.data.sessionId, ws);
+    await markOnline(ws.data.sessionId);
     await setUserState(ws.data.sessionId, "idle", { roomId: null });
 
     logEvent({
@@ -29,7 +27,19 @@ export const websocketHandler: WebSocketHandler<WSContextData> = {
 
   async close(ws: ServerWebSocket<WSContextData>, code: number, reason: string) {
     const { sessionId, roomId, interests } = ws.data;
-    connectionManager.unregister(sessionId);
+    const wentOffline = connectionManager.unregister(sessionId, ws);
+
+    if (!wentOffline) {
+      logEvent({
+        eventType: "ws_disconnected",
+        sessionId,
+        roomId,
+        details: { code, reason, replaced: true },
+      });
+      return;
+    }
+
+    await markOffline(sessionId);
     clearGeneralFallbackTimer(sessionId);
 
     // Remove from matchmaking queues
