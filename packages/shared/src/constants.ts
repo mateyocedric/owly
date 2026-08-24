@@ -29,9 +29,25 @@ export const RATE_LIMITS = {
   REACTION_BURST_LIMIT: 8,
 } as const;
 
-/** Preset live video reaction emojis (Meet/Zoom-style) */
-export const CHAT_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥"] as const;
-export type ChatReactionEmoji = (typeof CHAT_REACTIONS)[number];
+/** ASCII ids on the wire so production JSON/Zod never depend on emoji encoding. */
+export const CHAT_REACTION_IDS = [
+  "thumbs_up",
+  "heart",
+  "laugh",
+  "wow",
+  "sad",
+  "fire",
+] as const;
+export type ChatReactionId = (typeof CHAT_REACTION_IDS)[number];
+
+export const CHAT_REACTION_BY_ID = {
+  thumbs_up: { emoji: "👍", label: "Thumbs up" },
+  heart: { emoji: "❤️", label: "Heart" },
+  laugh: { emoji: "😂", label: "Laugh" },
+  wow: { emoji: "😮", label: "Surprised" },
+  sad: { emoji: "😢", label: "Sad" },
+  fire: { emoji: "🔥", label: "Fire" },
+} as const satisfies Record<ChatReactionId, { emoji: string; label: string }>;
 
 export const MATCHMAKING = {
   /** Seconds to wait for interest-based match before falling back to random */

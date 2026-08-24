@@ -1,6 +1,6 @@
 import React, { memo, useCallback, useEffect, useRef, useState } from "react";
 import { Mic, MicOff, Video, VideoOff, Loader2 } from "lucide-react";
-import type { ChatReactionEmoji } from "@owly/shared";
+import type { ChatReactionId } from "@owly/shared";
 import type { VideoStatus } from "../../hooks/useWebRTC.js";
 import { ViewSwitcher, type VideoPrimaryView } from "./ViewSwitcher.js";
 import { ReactionBar } from "./ReactionBar.js";
@@ -36,7 +36,7 @@ interface VideoPanelProps {
   remoteEmptyLabel?: string;
   reactionsEnabled?: boolean;
   reactionBursts?: ReactionBurst[];
-  onSendReaction?: (emoji: ChatReactionEmoji) => void;
+  onSendReaction?: (id: ChatReactionId) => void;
   onReactionBurstEnd?: (id: string) => void;
 }
 
@@ -134,8 +134,8 @@ export const VideoPanel = memo(function VideoPanel({
   }, []);
 
   const handleReact = useCallback(
-    (emoji: ChatReactionEmoji) => {
-      onSendReaction?.(emoji);
+    (id: ChatReactionId) => {
+      onSendReaction?.(id);
     },
     [onSendReaction]
   );

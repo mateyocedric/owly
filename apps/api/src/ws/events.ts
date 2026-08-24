@@ -44,6 +44,33 @@ export async function handleClientEvent(
     const json = JSON.parse(rawMessage);
     const result = clientEventSchema.safeParse(json);
     if (!result.success) {
+      const eventType =
+        json && typeof json === "object" && typeof json.type === "string"
+          ? json.type
+          : undefined;
+      const knownType = clientEventSchema.options.some(
+        (option) => option.shape.type.value === eventType
+      );
+
+      // Newer clients may send events this API build does not know yet.
+      // Ignore those instead of spamming "Invalid event structure" in chat.
+      if (eventType && !knownType) {
+        logEvent({
+          eventType: "ws_unknown_event",
+          sessionId: ws.data.sessionId,
+          roomId: ws.data.roomId,
+          details: { type: eventType },
+        });
+        return;
+      }
+
+      logEvent({
+        eventType: "ws_invalid_event",
+        sessionId: ws.data.sessionId,
+        roomId: ws.data.roomId,
+        errorCode: "INVALID_EVENT",
+        details: { type: eventType },
+      });
       ws.send(
         JSON.stringify({
           type: "error",
@@ -92,7 +119,7 @@ export async function handleClientEvent(
     }
 
     case "chat.reaction": {
-      await handleChatReaction(ws, parsed.data.emoji);
+      await handleChatReaction(ws, parsed.data.id);
       break;
     }
 
@@ -435,7 +462,7 @@ async function handleChatTyping(ws: ServerWebSocket<WSContextData>) {
 
 async function handleChatReaction(
   ws: ServerWebSocket<WSContextData>,
-  emoji: Extract<ClientEvent, { type: "chat.reaction" }>["data"]["emoji"]
+  reactionId: Extract<ClientEvent, { type: "chat.reaction" }>["data"]["id"]
 ) {
   const { sessionId, roomId } = ws.data;
   if (!roomId) return;
@@ -463,7 +490,7 @@ async function handleChatReaction(
   if (partnerId) {
     connectionManager.send(partnerId, {
       type: "chat.reaction",
-      data: { emoji },
+      data: { id: reactionId },
     });
   }
 }

@@ -1,9 +1,8 @@
 import React, { memo } from "react";
-import type { ChatReactionEmoji } from "@owly/shared";
 
 export interface ReactionBurst {
   id: string;
-  emoji: ChatReactionEmoji;
+  emoji: string;
   from: "self" | "partner";
   /** Horizontal start position as a percentage of the overlay width (0–100). */
   x: number;

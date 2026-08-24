@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { CHAT_REACTIONS, RATE_LIMITS } from "../constants.js";
+import { CHAT_REACTION_IDS, RATE_LIMITS } from "../constants.js";
 
-const chatReactionEmojiSchema = z.enum(CHAT_REACTIONS);
+const chatReactionIdSchema = z.enum(CHAT_REACTION_IDS);
 
 // ─── Client → Server Events ─────────────────────────────────────────────────
 
@@ -33,7 +33,7 @@ export const chatTypingSchema = z.object({
 export const chatReactionSchema = z.object({
   type: z.literal("chat.reaction"),
   data: z.object({
-    emoji: chatReactionEmojiSchema,
+    id: chatReactionIdSchema,
   }),
 });
 
@@ -169,7 +169,7 @@ export const serverChatTypingSchema = z.object({
 export const serverChatReactionSchema = z.object({
   type: z.literal("chat.reaction"),
   data: z.object({
-    emoji: chatReactionEmojiSchema,
+    id: chatReactionIdSchema,
   }),
 });
 

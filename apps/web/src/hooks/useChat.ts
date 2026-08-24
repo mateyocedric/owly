@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from "react";
-import { RATE_LIMITS } from "@owly/shared";
-import type { ChatReactionEmoji, ClientEvent } from "@owly/shared";
+import { CHAT_REACTION_BY_ID, RATE_LIMITS } from "@owly/shared";
+import type { ChatReactionId, ClientEvent } from "@owly/shared";
 import { useAppStore } from "../lib/store.js";
 import { OwlyWSClient } from "../lib/ws-client.js";
 import { apiFetch } from "../lib/api.js";
@@ -12,14 +12,20 @@ import {
 import type { ReactionBurst } from "../components/chat/ReactionBurstOverlay.js";
 
 function createReactionBurst(
-  emoji: ChatReactionEmoji,
+  reactionId: ChatReactionId,
   from: "self" | "partner"
 ): ReactionBurst {
   // Self bursts lean left; partner bursts lean right, with light random drift.
   const xBase = from === "self" ? 28 : 72;
   const x = Math.min(88, Math.max(12, xBase + (Math.random() * 16 - 8)));
   const drift = (Math.random() * 48 - 24) * (from === "self" ? 1 : -1);
-  return { id: nanoid(), emoji, from, x, drift };
+  return {
+    id: nanoid(),
+    emoji: CHAT_REACTION_BY_ID[reactionId].emoji,
+    from,
+    x,
+    drift,
+  };
 }
 
 export function useChat() {
@@ -48,8 +54,8 @@ export function useChat() {
   }, []);
 
   const pushReactionBurst = useCallback(
-    (emoji: ChatReactionEmoji, from: "self" | "partner") => {
-      setReactionBursts((prev) => [...prev, createReactionBurst(emoji, from)]);
+    (reactionId: ChatReactionId, from: "self" | "partner") => {
+      setReactionBursts((prev) => [...prev, createReactionBurst(reactionId, from)]);
     },
     []
   );
@@ -265,7 +271,7 @@ export function useChat() {
             break;
 
           case "chat.reaction":
-            pushReactionBurst(event.data.emoji, "partner");
+            pushReactionBurst(event.data.id, "partner");
             break;
 
           case "chat.partner_left":
@@ -314,6 +320,10 @@ export function useChat() {
               startSendCooldown(
                 event.data.retryAfterSeconds ?? RATE_LIMITS.MESSAGE_COOLDOWN_SECONDS
               );
+            }
+            // Older APIs reject unknown events (e.g. chat.reaction) with this code.
+            if (event.data.code === "INVALID_EVENT") {
+              break;
             }
             store.addMessage({
               id: nanoid(),
@@ -410,7 +420,7 @@ export function useChat() {
   }, []);
 
   const sendReaction = useCallback(
-    (emoji: ChatReactionEmoji) => {
+    (reactionId: ChatReactionId) => {
       if (!wsClientRef.current) return;
       if (useAppStore.getState().connectionState !== "connected") return;
 
@@ -427,10 +437,10 @@ export function useChat() {
       recent.push(now);
       recentReactionTimesRef.current = recent;
 
-      pushReactionBurst(emoji, "self");
+      pushReactionBurst(reactionId, "self");
       wsClientRef.current.send({
         type: "chat.reaction",
-        data: { emoji },
+        data: { id: reactionId },
       });
     },
     [pushReactionBurst]
