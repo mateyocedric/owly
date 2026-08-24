@@ -515,12 +515,19 @@ async function handleChatReaction(
 async function handleChatNext(ws: ServerWebSocket<WSContextData>) {
   const { sessionId, roomId } = ws.data;
 
-  // Cooldown check for next button
   const now = Date.now();
-  if (
+  const onCooldown = !!(
     ws.data.lastSkipTime &&
     now - ws.data.lastSkipTime < RATE_LIMITS.SKIP_COOLDOWN_SECONDS * 1000
-  ) {
+  );
+
+  // Always leave the current room first. Cooldown only delays requeue —
+  // the partner must still be told this session left.
+  if (roomId) {
+    await endCurrentRoom(roomId, sessionId, "next");
+  }
+
+  if (onCooldown) {
     ws.send(
       JSON.stringify({
         type: "error",
@@ -533,10 +540,6 @@ async function handleChatNext(ws: ServerWebSocket<WSContextData>) {
     return;
   }
   ws.data.lastSkipTime = now;
-
-  if (roomId) {
-    await endCurrentRoom(roomId, sessionId, "next");
-  }
 
   // Automatically requeue
   await handleQueueJoin(ws, ws.data.interests);

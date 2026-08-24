@@ -292,9 +292,13 @@ export function useChat() {
             setWebrtcInitiator(null);
             store.setRoomId(null);
             store.setConnectionState("partner_left");
-            scheduleAutoQueue(
-              "Stranger has disconnected. Finding you a new partner in 2 seconds..."
-            );
+            store.addMessage({
+              id: nanoid(),
+              sender: "system",
+              content:
+                "Stranger has disconnected. Click Next to find a new partner.",
+              timestamp: new Date(),
+            });
             break;
 
           case "chat.ended":
@@ -338,6 +342,13 @@ export function useChat() {
             // Older APIs reject unknown events (e.g. chat.reaction) with this code.
             if (event.data.code === "INVALID_EVENT") {
               break;
+            }
+            if (event.data.code === "SKIP_COOLDOWN") {
+              joiningRef.current = false;
+              const { connectionState, roomId } = useAppStore.getState();
+              if (connectionState === "finding" && !roomId) {
+                store.setConnectionState("idle");
+              }
             }
             store.addMessage({
               id: nanoid(),

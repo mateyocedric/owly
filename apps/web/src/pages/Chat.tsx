@@ -212,7 +212,7 @@ export function ChatPage() {
                         Partner disconnected
                       </p>
                       <p className="mt-1 text-xs text-white/75">
-                        Finding you a new partner in 2 seconds...
+                        Click Next to find a new partner.
                       </p>
                     </div>
                   </div>
