@@ -1,6 +1,5 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { MessageSquare } from "lucide-react";
 
 export function Header() {
   const location = useLocation();
@@ -10,7 +9,14 @@ export function Header() {
     <header className="sticky top-0 z-40 w-full border-b border-[var(--sx-hairline-on-dark)] bg-[var(--sx-canvas-night)]">
       <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between px-6 sm:px-8">
         <Link to="/" className="flex items-center gap-3 transition-opacity hover:opacity-80">
-          <MessageSquare className="size-5 text-[var(--sx-on-primary)]" aria-hidden />
+          <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white p-1">
+            <img
+              src="/owly-vector.svg"
+              alt=""
+              draggable={false}
+              className="block size-full object-contain"
+            />
+          </span>
           <div className="flex flex-col">
             <span className="text-sm font-bold uppercase tracking-[0.12em] text-[var(--sx-on-primary)]">
               Owly
