@@ -1,4 +1,5 @@
-import React from "react";
+import { useId, useMemo } from "react";
+import owlySvg from "../../assets/owly-vector.svg?raw";
 
 type OwlyLogoProps = {
   size?: "sm" | "md";
@@ -6,22 +7,33 @@ type OwlyLogoProps = {
   className?: string;
 };
 
+const SIZE_CLASS = {
+  sm: "flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white p-1",
+  md: "flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white p-2",
+} as const;
+
 export function OwlyLogo({ size = "md", alt = "", className }: OwlyLogoProps) {
-  const wrapperClass =
-    size === "sm"
-      ? "flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white p-1"
-      : "flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white p-2";
+  const uid = useId().replace(/:/g, "");
+  const markup = useMemo(
+    () =>
+      owlySvg
+        .replace(/<\?xml[^>]*>\s*/u, "")
+        .replaceAll("owly-clip-left", `owly-clip-left-${uid}`)
+        .replaceAll("owly-clip-right", `owly-clip-right-${uid}`),
+    [uid],
+  );
 
   return (
-    <span className={`${wrapperClass}${className ? ` ${className}` : ""}`}>
-      <img
-        src="/owly-vector.svg"
-        alt={alt}
-        draggable={false}
-        decoding="async"
-        className="block size-full object-contain"
+    <span
+      className={`${SIZE_CLASS[size]}${className ? ` ${className}` : ""}`}
+      role={alt ? "img" : undefined}
+      aria-label={alt || undefined}
+      aria-hidden={alt ? undefined : true}
+    >
+      <span
+        className="pointer-events-none block size-full [&_svg]:block [&_svg]:size-full"
+        dangerouslySetInnerHTML={{ __html: markup }}
       />
     </span>
   );
 }
-
