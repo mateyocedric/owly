@@ -2,14 +2,5 @@
   "buildCommand": "bun run --filter @owly/web build",
   "outputDirectory": "apps/web/dist",
   "installCommand": "bun install",
-  "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "https://worker-production-3604.up.railway.app/api/:path*"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
-  ]
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }
