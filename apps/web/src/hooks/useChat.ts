@@ -472,6 +472,7 @@ export function useChat() {
     micOn: video.micOn,
     partnerCameraOn: video.partnerCameraOn,
     partnerMicOn: video.partnerMicOn,
+    partnerMediaAvailable: video.partnerMediaAvailable,
     toggleCamera: video.toggleCamera,
     toggleMic: video.toggleMic,
   };

@@ -26,6 +26,7 @@ interface UseWebRTCOptions {
 }
 
 const DEFAULT_STUN = "stun:stun.l.google.com:19302";
+const CONNECTING_TIMEOUT_MS = 10_000;
 
 function getIceServers(): RTCIceServer[] {
   const stun =
@@ -49,6 +50,7 @@ export function useWebRTC({
   const [micOn, setMicOn] = useState(true);
   const [partnerCameraOn, setPartnerCameraOn] = useState(true);
   const [partnerMicOn, setPartnerMicOn] = useState(true);
+  const [partnerMediaAvailable, setPartnerMediaAvailable] = useState(true);
 
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
@@ -58,14 +60,50 @@ export function useWebRTC({
   const roomIdRef = useRef(roomId);
   const initiatorRef = useRef(initiator);
   const sendRef = useRef(send);
+  const statusRef = useRef<VideoStatus>("idle");
+  const partnerMediaAvailableRef = useRef(true);
+  const connectingTimerRef = useRef<number | null>(null);
 
   roomIdRef.current = roomId;
   initiatorRef.current = initiator;
   sendRef.current = send;
 
+  const updateStatus = useCallback((next: VideoStatus) => {
+    statusRef.current = next;
+    setStatus(next);
+  }, []);
+
+  const clearConnectingTimer = useCallback(() => {
+    if (connectingTimerRef.current) {
+      window.clearTimeout(connectingTimerRef.current);
+      connectingTimerRef.current = null;
+    }
+  }, []);
+
+  const markConnectedIfWaiting = useCallback(() => {
+    if (statusRef.current === "connecting") {
+      updateStatus("connected");
+    }
+  }, [updateStatus]);
+
+  const armConnectingTimer = useCallback(() => {
+    clearConnectingTimer();
+    connectingTimerRef.current = window.setTimeout(() => {
+      connectingTimerRef.current = null;
+      if (statusRef.current !== "connecting") return;
+      if (!remoteStreamRef.current) {
+        partnerMediaAvailableRef.current = false;
+        setPartnerMediaAvailable(false);
+        setPartnerCameraOn(false);
+      }
+      updateStatus("connected");
+    }, CONNECTING_TIMEOUT_MS);
+  }, [clearConnectingTimer, updateStatus]);
+
   const teardown = useCallback(() => {
     pendingSignalsRef.current = [];
     makingOfferRef.current = false;
+    clearConnectingTimer();
 
     if (pcRef.current) {
       pcRef.current.onicecandidate = null;
@@ -95,12 +133,15 @@ export function useWebRTC({
 
     setLocalStream(null);
     setRemoteStream(null);
+    statusRef.current = "idle";
     setStatus("idle");
     setCameraOn(true);
     setMicOn(true);
     setPartnerCameraOn(true);
     setPartnerMicOn(true);
-  }, []);
+    partnerMediaAvailableRef.current = true;
+    setPartnerMediaAvailable(true);
+  }, [clearConnectingTimer]);
 
   const applySignal = useCallback(
     async (pc: RTCPeerConnection, data: SignalData) => {
@@ -157,10 +198,19 @@ export function useWebRTC({
     [applySignal]
   );
 
-  const handleInboundVideoState = useCallback((data: VideoStateData) => {
-    setPartnerCameraOn(data.cameraOn);
-    setPartnerMicOn(data.micOn);
-  }, []);
+  const handleInboundVideoState = useCallback(
+    (data: VideoStateData) => {
+      setPartnerCameraOn(data.cameraOn);
+      setPartnerMicOn(data.micOn);
+      if (data.available === false) {
+        partnerMediaAvailableRef.current = false;
+        setPartnerMediaAvailable(false);
+        clearConnectingTimer();
+        markConnectedIfWaiting();
+      }
+    },
+    [clearConnectingTimer, markConnectedIfWaiting]
+  );
 
   useEffect(() => {
     handlersRef.current = {
@@ -180,42 +230,38 @@ export function useWebRTC({
 
     let cancelled = false;
 
-    async function start() {
-      setStatus("requesting");
-      setPartnerCameraOn(true);
-      setPartnerMicOn(true);
-
-      let stream: MediaStream;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: true,
-        });
-      } catch (err: any) {
-        if (cancelled) return;
-        const denied =
-          err?.name === "NotAllowedError" ||
-          err?.name === "PermissionDeniedError";
-        setStatus(denied ? "permission_denied" : "error");
-        return;
-      }
-
+    async function startPeer(stream: MediaStream | null) {
       if (cancelled) {
-        for (const track of stream.getTracks()) track.stop();
+        if (stream) {
+          for (const track of stream.getTracks()) track.stop();
+        }
         return;
       }
 
-      localStreamRef.current = stream;
-      setLocalStream(stream);
-      setCameraOn(true);
-      setMicOn(true);
-      setStatus("connecting");
+      if (stream) {
+        localStreamRef.current = stream;
+        setLocalStream(stream);
+        setCameraOn(true);
+        setMicOn(true);
+        if (partnerMediaAvailableRef.current && statusRef.current !== "connected") {
+          updateStatus("connecting");
+          armConnectingTimer();
+        } else {
+          updateStatus("connected");
+        }
+      }
 
       const pc = new RTCPeerConnection({ iceServers: getIceServers() });
       pcRef.current = pc;
 
-      for (const track of stream.getTracks()) {
-        pc.addTrack(track, stream);
+      if (stream) {
+        for (const track of stream.getTracks()) {
+          pc.addTrack(track, stream);
+        }
+      } else {
+        // Keep m-lines so we can still receive the partner's media.
+        pc.addTransceiver("video", { direction: "recvonly" });
+        pc.addTransceiver("audio", { direction: "recvonly" });
       }
 
       pc.ontrack = (event) => {
@@ -223,12 +269,14 @@ export function useWebRTC({
         if (incoming) {
           remoteStreamRef.current = incoming;
           setRemoteStream(incoming);
-          return;
+        } else {
+          const remote = remoteStreamRef.current ?? new MediaStream();
+          remote.addTrack(event.track);
+          remoteStreamRef.current = remote;
+          setRemoteStream(remote);
         }
-        const remote = remoteStreamRef.current ?? new MediaStream();
-        remote.addTrack(event.track);
-        remoteStreamRef.current = remote;
-        setRemoteStream(remote);
+        setPartnerMediaAvailable(true);
+        partnerMediaAvailableRef.current = true;
       };
 
       pc.onicecandidate = (event) => {
@@ -251,19 +299,28 @@ export function useWebRTC({
       pc.onconnectionstatechange = () => {
         const state = pc.connectionState;
         if (state === "connected") {
-          setStatus("connected");
+          clearConnectingTimer();
+          const current = statusRef.current;
+          if (current !== "permission_denied" && current !== "error") {
+            updateStatus("connected");
+          }
         } else if (state === "failed") {
-          setStatus("error");
+          clearConnectingTimer();
+          const current = statusRef.current;
+          if (current !== "permission_denied") {
+            updateStatus("error");
+          }
         } else if (state === "disconnected" || state === "closed") {
           // Partner may reconnect briefly; keep last known UI
         }
       };
 
-      // Announce initial AV state to partner
-      sendRef.current({
-        type: "video.state",
-        data: { cameraOn: true, micOn: true },
-      });
+      if (stream) {
+        sendRef.current({
+          type: "video.state",
+          data: { cameraOn: true, micOn: true, available: true },
+        });
+      }
 
       await flushPendingSignals(pc);
 
@@ -278,11 +335,45 @@ export function useWebRTC({
           });
         } catch (err) {
           console.error("Failed to create WebRTC offer", err);
-          if (!cancelled) setStatus("error");
+          if (!cancelled && statusRef.current !== "permission_denied") {
+            updateStatus("error");
+          }
         } finally {
           makingOfferRef.current = false;
         }
       }
+    }
+
+    async function start() {
+      updateStatus("requesting");
+      setPartnerCameraOn(true);
+      setPartnerMicOn(true);
+      partnerMediaAvailableRef.current = true;
+      setPartnerMediaAvailable(true);
+
+      let stream: MediaStream | null = null;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true,
+        });
+      } catch (err: any) {
+        if (cancelled) return;
+        const denied =
+          err?.name === "NotAllowedError" ||
+          err?.name === "PermissionDeniedError";
+        updateStatus(denied ? "permission_denied" : "error");
+        setCameraOn(false);
+        setMicOn(false);
+        sendRef.current({
+          type: "video.state",
+          data: { cameraOn: false, micOn: false, available: false },
+        });
+        await startPeer(null);
+        return;
+      }
+
+      await startPeer(stream);
     }
 
     start();
@@ -291,7 +382,16 @@ export function useWebRTC({
       cancelled = true;
       teardown();
     };
-  }, [enabled, roomId, initiator, teardown, flushPendingSignals]);
+  }, [
+    enabled,
+    roomId,
+    initiator,
+    teardown,
+    flushPendingSignals,
+    updateStatus,
+    armConnectingTimer,
+    clearConnectingTimer,
+  ]);
 
   const toggleCamera = useCallback(() => {
     const stream = localStreamRef.current;
@@ -303,7 +403,7 @@ export function useWebRTC({
     setCameraOn(next);
     sendRef.current({
       type: "video.state",
-      data: { cameraOn: next, micOn },
+      data: { cameraOn: next, micOn, available: true },
     });
   }, [cameraOn, micOn]);
 
@@ -317,7 +417,7 @@ export function useWebRTC({
     setMicOn(next);
     sendRef.current({
       type: "video.state",
-      data: { cameraOn, micOn: next },
+      data: { cameraOn, micOn: next, available: true },
     });
   }, [cameraOn, micOn]);
 
@@ -329,6 +429,7 @@ export function useWebRTC({
     micOn,
     partnerCameraOn,
     partnerMicOn,
+    partnerMediaAvailable,
     toggleCamera,
     toggleMic,
     teardownVideo: teardown,

@@ -24,6 +24,7 @@ interface VideoPanelProps {
   micOn: boolean;
   partnerCameraOn: boolean;
   partnerMicOn: boolean;
+  partnerMediaAvailable?: boolean;
   onToggleCamera: () => void;
   onToggleMic: () => void;
   remoteEmptyLabel?: string;
@@ -100,6 +101,7 @@ export const VideoPanel = memo(function VideoPanel({
   micOn,
   partnerCameraOn,
   partnerMicOn,
+  partnerMediaAvailable = true,
   onToggleCamera,
   onToggleMic,
   remoteEmptyLabel,
@@ -142,12 +144,16 @@ export const VideoPanel = memo(function VideoPanel({
           emptyLabel={
             remoteEmptyLabel
               ? remoteEmptyLabel
-              : status === "connected" && !partnerCameraOn
-                ? "Stranger camera off"
-                : statusMessage || "Waiting for stranger video..."
+              : !partnerMediaAvailable
+                ? "Stranger camera unavailable"
+                : status === "connected" && !partnerCameraOn
+                  ? "Stranger camera off"
+                  : statusMessage || "Waiting for stranger video..."
           }
           showOffOverlay={
-            !!remoteEmptyLabel || (status === "connected" && !partnerCameraOn)
+            !!remoteEmptyLabel ||
+            !partnerMediaAvailable ||
+            (status === "connected" && !partnerCameraOn)
           }
           framed={selfPrimary}
           switcher={selfPrimary ? <ViewSwitcher primaryView={primaryView} onSwitch={switchView} /> : undefined}
@@ -199,7 +205,7 @@ export const VideoPanel = memo(function VideoPanel({
         </button>
       </div>
 
-      {(status === "requesting" || status === "connecting") && (
+      {(status === "requesting" || status === "connecting") && partnerMediaAvailable && (
         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/20">
           <div className="flex items-center gap-2 rounded-full bg-black/60 px-3 py-1.5 text-xs text-zinc-200 backdrop-blur-sm">
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -209,8 +215,10 @@ export const VideoPanel = memo(function VideoPanel({
       )}
 
       {(status === "permission_denied" || status === "error") && (
-        <div className="pointer-events-none absolute left-3 top-14 z-10 max-w-xs rounded-sm bg-black/60 px-3 py-1.5 text-[11px] text-zinc-200 backdrop-blur-sm lg:top-16">
-          {statusMessage}
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/20 pb-[45%] lg:pb-0">
+          <div className="max-w-[min(18rem,calc(100%-1.5rem))] rounded-full bg-black/60 px-4 py-1.5 text-center text-xs text-zinc-200 backdrop-blur-sm">
+            {statusMessage}
+          </div>
         </div>
       )}
     </div>

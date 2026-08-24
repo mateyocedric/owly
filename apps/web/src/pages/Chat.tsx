@@ -39,6 +39,7 @@ export function ChatPage() {
     micOn,
     partnerCameraOn,
     partnerMicOn,
+    partnerMediaAvailable,
     toggleCamera,
     toggleMic,
   } = useChat();
@@ -144,6 +145,7 @@ export function ChatPage() {
                   micOn={micOn}
                   partnerCameraOn={partnerCameraOn}
                   partnerMicOn={partnerMicOn}
+                  partnerMediaAvailable={partnerMediaAvailable}
                   onToggleCamera={toggleCamera}
                   onToggleMic={toggleMic}
                   remoteEmptyLabel={isPartnerLeft ? "Partner disconnected" : undefined}

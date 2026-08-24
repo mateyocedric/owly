@@ -82,6 +82,8 @@ export const videoStateSchema = z.object({
   data: z.object({
     cameraOn: z.boolean(),
     micOn: z.boolean(),
+    /** False when the peer has no camera/mic (permission denied or device error). */
+    available: z.boolean().optional(),
   }),
 });
 
@@ -138,6 +140,7 @@ export const serverVideoStateSchema = z.object({
   data: z.object({
     cameraOn: z.boolean(),
     micOn: z.boolean(),
+    available: z.boolean().optional(),
   }),
 });
 
