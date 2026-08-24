@@ -1,5 +1,6 @@
 import React from "react";
 import { BackLink, PageContainer, PageHeader, ProseSection } from "../components/design/index.js";
+import { owlyEmail, owlyMailto } from "../lib/config.js";
 
 export function GuidelinesPage() {
   return (
@@ -27,6 +28,16 @@ export function GuidelinesPage() {
             <li>Doxxing, harassment campaigns, or extortion.</li>
             <li>Financial fraud and phishing attacks.</li>
           </ul>
+        </ProseSection>
+
+        <ProseSection title="Contact">
+          <p>
+            For safety concerns that need staff review, email{" "}
+            <a href={owlyMailto()} className="sx-link-on-dark">
+              {owlyEmail()}
+            </a>
+            .
+          </p>
         </ProseSection>
       </div>
 

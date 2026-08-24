@@ -1,5 +1,15 @@
+const DEFAULT_OWLY_EMAIL = "support@owly.fun";
+
 function trimSlash(value: string): string {
   return value.replace(/\/+$/, "");
+}
+
+export function owlyEmail(): string {
+  return import.meta.env.VITE_OWLY_EMAIL?.trim() || DEFAULT_OWLY_EMAIL;
+}
+
+export function owlyMailto(): string {
+  return `mailto:${owlyEmail()}`;
 }
 
 export function apiBaseUrl(): string {

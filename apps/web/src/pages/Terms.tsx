@@ -1,5 +1,6 @@
 import React from "react";
 import { BackLink, PageContainer, PageHeader, ProseSection } from "../components/design/index.js";
+import { owlyEmail, owlyMailto } from "../lib/config.js";
 
 export function TermsPage() {
   return (
@@ -28,6 +29,16 @@ export function TermsPage() {
           <p>
             We reserve the right to immediately terminate access or block IP addresses for any
             violation of these terms without prior notice.
+          </p>
+        </ProseSection>
+
+        <ProseSection title="4. Contact">
+          <p>
+            Questions about these terms can be sent to{" "}
+            <a href={owlyMailto()} className="sx-link-on-dark">
+              {owlyEmail()}
+            </a>
+            .
           </p>
         </ProseSection>
       </div>

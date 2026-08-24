@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { owlyMailto } from "../../lib/config.js";
 
 export function Footer() {
   return (
@@ -19,6 +20,9 @@ export function Footer() {
           <Link to="/guidelines" className="sx-nav-link px-0 py-0">
             Guidelines
           </Link>
+          <a href={owlyMailto()} className="sx-nav-link px-0 py-0">
+            Contact
+          </a>
         </div>
       </div>
     </footer>

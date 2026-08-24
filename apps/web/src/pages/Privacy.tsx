@@ -1,5 +1,6 @@
 import React from "react";
 import { BackLink, PageContainer, PageHeader, ProseSection } from "../components/design/index.js";
+import { owlyEmail, owlyMailto } from "../lib/config.js";
 
 export function PrivacyPage() {
   return (
@@ -39,6 +40,16 @@ export function PrivacyPage() {
           <p>
             Unreported chat messages are removed from server memory when a room closes. Ban records
             and moderation reports are retained for audit and legal compliance.
+          </p>
+        </ProseSection>
+
+        <ProseSection title="5. Contact">
+          <p>
+            Privacy questions can be sent to{" "}
+            <a href={owlyMailto()} className="sx-link-on-dark">
+              {owlyEmail()}
+            </a>
+            .
           </p>
         </ProseSection>
       </div>
