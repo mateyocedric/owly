@@ -81,6 +81,11 @@ export function useChat() {
     handlersRef: webrtcHandlersRef,
   });
 
+  const ensureLocalMediaRef = useRef(video.ensureLocalMedia);
+  const releaseLocalMediaRef = useRef(video.releaseLocalMedia);
+  ensureLocalMediaRef.current = video.ensureLocalMedia;
+  releaseLocalMediaRef.current = video.releaseLocalMedia;
+
   const clearAutoQueueTimer = useCallback(() => {
     if (autoQueueTimerRef.current) {
       clearTimeout(autoQueueTimerRef.current);
@@ -291,6 +296,7 @@ export function useChat() {
             setWebrtcInitiator(null);
             store.setRoomId(null);
             store.setConnectionState("idle");
+            releaseLocalMediaRef.current();
             break;
 
           case "moderation.warning":
@@ -365,6 +371,8 @@ export function useChat() {
       try {
         clearAutoQueueTimer();
         clearReconnectSoon();
+        // Request camera/mic on the user gesture before any network await.
+        await ensureLocalMediaRef.current();
         store.setConnectionState("finding");
         const client = await initWS();
         if (!client) {
@@ -466,6 +474,7 @@ export function useChat() {
   const stopChat = useCallback(() => {
     if (!wsClientRef.current) {
       setWebrtcInitiator(null);
+      releaseLocalMediaRef.current();
       useAppStore.getState().resetChat();
       return;
     }
@@ -478,6 +487,7 @@ export function useChat() {
     wsClientRef.current.send({ type: "chat.stop" });
     store.setRoomId(null);
     store.setConnectionState("idle");
+    releaseLocalMediaRef.current();
   }, [store, clearAutoQueueTimer, clearReconnectSoon, clearSendCooldown]);
 
   const blockPartner = useCallback(() => {
@@ -487,6 +497,7 @@ export function useChat() {
     wsClientRef.current.send({ type: "chat.block" });
     store.setRoomId(null);
     store.setConnectionState("idle");
+    releaseLocalMediaRef.current();
     store.addMessage({
       id: nanoid(),
       sender: "system",
@@ -506,6 +517,7 @@ export function useChat() {
       });
       store.setRoomId(null);
       store.setConnectionState("idle");
+      releaseLocalMediaRef.current();
       store.addMessage({
         id: nanoid(),
         sender: "system",

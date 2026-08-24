@@ -67,6 +67,10 @@ export function ChatPage() {
   const isPartnerLeft = connectionState === "partner_left";
   const isPreSession = isIdle || isError || isFinding || isDisconnected;
   const showVideo = isConnected || isPartnerLeft;
+  const isRequestingMedia = videoStatus === "requesting";
+  const startChatLabel = isRequestingMedia ? "Allow camera..." : "Start Chatting";
+  const tryAgainLabel = isRequestingMedia ? "Allow camera..." : "Try Again";
+  const rejoinLabel = isRequestingMedia ? "Allow camera..." : "Rejoin Now";
 
   const reportModal = (
     <ReportModal
@@ -112,8 +116,11 @@ export function ChatPage() {
                       Enter the matching queue to connect with a random stranger.
                     </p>
                   </div>
-                  <GhostButton onClick={() => joinQueue()}>
-                    Start Chatting
+                  <GhostButton
+                    disabled={isRequestingMedia}
+                    onClick={() => joinQueue()}
+                  >
+                    {startChatLabel}
                   </GhostButton>
                 </>
               ) : isError ? (
@@ -125,8 +132,11 @@ export function ChatPage() {
                       then try again.
                     </p>
                   </div>
-                  <GhostButton onClick={() => joinQueue()}>
-                    Try Again
+                  <GhostButton
+                    disabled={isRequestingMedia}
+                    onClick={() => joinQueue()}
+                  >
+                    {tryAgainLabel}
                   </GhostButton>
                 </>
               ) : (
@@ -137,8 +147,11 @@ export function ChatPage() {
                       Connection lost. Rejoining the queue in a moment...
                     </p>
                   </div>
-                  <GhostButton onClick={() => joinQueue()}>
-                    Rejoin Now
+                  <GhostButton
+                    disabled={isRequestingMedia}
+                    onClick={() => joinQueue()}
+                  >
+                    {rejoinLabel}
                   </GhostButton>
                 </>
               )}

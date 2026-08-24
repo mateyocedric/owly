@@ -36,6 +36,10 @@ function getIceServers(): RTCIceServer[] {
   return [{ urls: stun }];
 }
 
+function streamHasLiveTracks(stream: MediaStream | null): boolean {
+  return !!stream?.getTracks().some((t) => t.readyState === "live");
+}
+
 export function useWebRTC({
   enabled,
   roomId,
@@ -63,10 +67,15 @@ export function useWebRTC({
   const statusRef = useRef<VideoStatus>("idle");
   const partnerMediaAvailableRef = useRef(true);
   const connectingTimerRef = useRef<number | null>(null);
+  const acquirePromiseRef = useRef<Promise<MediaStream | null> | null>(null);
+  const cameraOnRef = useRef(true);
+  const micOnRef = useRef(true);
 
   roomIdRef.current = roomId;
   initiatorRef.current = initiator;
   sendRef.current = send;
+  cameraOnRef.current = cameraOn;
+  micOnRef.current = micOn;
 
   const updateStatus = useCallback((next: VideoStatus) => {
     statusRef.current = next;
@@ -100,7 +109,8 @@ export function useWebRTC({
     }, CONNECTING_TIMEOUT_MS);
   }, [clearConnectingTimer, updateStatus]);
 
-  const teardown = useCallback(() => {
+  /** Close peer connection and remote media; keep local camera/mic stream. */
+  const teardownPeer = useCallback(() => {
     pendingSignalsRef.current = [];
     makingOfferRef.current = false;
     clearConnectingTimer();
@@ -117,13 +127,6 @@ export function useWebRTC({
       pcRef.current = null;
     }
 
-    if (localStreamRef.current) {
-      for (const track of localStreamRef.current.getTracks()) {
-        track.stop();
-      }
-      localStreamRef.current = null;
-    }
-
     if (remoteStreamRef.current) {
       for (const track of remoteStreamRef.current.getTracks()) {
         track.stop();
@@ -131,17 +134,98 @@ export function useWebRTC({
       remoteStreamRef.current = null;
     }
 
-    setLocalStream(null);
     setRemoteStream(null);
-    statusRef.current = "idle";
-    setStatus("idle");
-    setCameraOn(true);
-    setMicOn(true);
     setPartnerCameraOn(true);
     setPartnerMicOn(true);
     partnerMediaAvailableRef.current = true;
     setPartnerMediaAvailable(true);
-  }, [clearConnectingTimer]);
+
+    const current = statusRef.current;
+    if (current !== "permission_denied" && current !== "error" && current !== "requesting") {
+      updateStatus("idle");
+    }
+  }, [clearConnectingTimer, updateStatus]);
+
+  /** Stop local tracks and clear media state (Stop / idle / unmount). */
+  const releaseLocalMedia = useCallback(() => {
+    acquirePromiseRef.current = null;
+    if (localStreamRef.current) {
+      for (const track of localStreamRef.current.getTracks()) {
+        track.stop();
+      }
+      localStreamRef.current = null;
+    }
+    setLocalStream(null);
+    setCameraOn(true);
+    setMicOn(true);
+    cameraOnRef.current = true;
+    micOnRef.current = true;
+    if (statusRef.current === "permission_denied" || statusRef.current === "error") {
+      updateStatus("idle");
+    } else if (!pcRef.current && statusRef.current !== "requesting") {
+      updateStatus("idle");
+    }
+  }, [updateStatus]);
+
+  const teardown = useCallback(() => {
+    teardownPeer();
+    releaseLocalMedia();
+    updateStatus("idle");
+  }, [teardownPeer, releaseLocalMedia, updateStatus]);
+
+  const ensureLocalMedia = useCallback(async (): Promise<MediaStream | null> => {
+    if (streamHasLiveTracks(localStreamRef.current)) {
+      return localStreamRef.current;
+    }
+
+    if (localStreamRef.current) {
+      for (const track of localStreamRef.current.getTracks()) {
+        track.stop();
+      }
+      localStreamRef.current = null;
+      setLocalStream(null);
+    }
+
+    if (acquirePromiseRef.current) {
+      return acquirePromiseRef.current;
+    }
+
+    updateStatus("requesting");
+
+    const acquire = (async (): Promise<MediaStream | null> => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true,
+        });
+        localStreamRef.current = stream;
+        setLocalStream(stream);
+        setCameraOn(true);
+        setMicOn(true);
+        cameraOnRef.current = true;
+        micOnRef.current = true;
+        if (statusRef.current === "requesting") {
+          updateStatus("idle");
+        }
+        return stream;
+      } catch (err: any) {
+        const denied =
+          err?.name === "NotAllowedError" ||
+          err?.name === "PermissionDeniedError";
+        updateStatus(denied ? "permission_denied" : "error");
+        setCameraOn(false);
+        setMicOn(false);
+        cameraOnRef.current = false;
+        micOnRef.current = false;
+        return null;
+      } finally {
+        acquirePromiseRef.current = null;
+      }
+    })();
+
+    acquirePromiseRef.current = acquire;
+    return acquire;
+  }, [updateStatus]);
 
   const applySignal = useCallback(
     async (pc: RTCPeerConnection, data: SignalData) => {
@@ -212,6 +296,9 @@ export function useWebRTC({
     [clearConnectingTimer, markConnectedIfWaiting]
   );
 
+  const teardownRef = useRef(teardown);
+  teardownRef.current = teardown;
+
   useEffect(() => {
     handlersRef.current = {
       onSignal: handleInboundSignal,
@@ -223,8 +310,14 @@ export function useWebRTC({
   }, [handlersRef, handleInboundSignal, handleInboundVideoState]);
 
   useEffect(() => {
+    return () => {
+      teardownRef.current();
+    };
+  }, []);
+
+  useEffect(() => {
     if (!enabled || !roomId || initiator === null) {
-      teardown();
+      teardownPeer();
       return;
     }
 
@@ -232,17 +325,18 @@ export function useWebRTC({
 
     async function startPeer(stream: MediaStream | null) {
       if (cancelled) {
-        if (stream) {
-          for (const track of stream.getTracks()) track.stop();
-        }
         return;
       }
 
       if (stream) {
         localStreamRef.current = stream;
         setLocalStream(stream);
-        setCameraOn(true);
-        setMicOn(true);
+        const videoEnabled = stream.getVideoTracks()[0]?.enabled ?? true;
+        const audioEnabled = stream.getAudioTracks()[0]?.enabled ?? true;
+        setCameraOn(videoEnabled);
+        setMicOn(audioEnabled);
+        cameraOnRef.current = videoEnabled;
+        micOnRef.current = audioEnabled;
         if (partnerMediaAvailableRef.current && statusRef.current !== "connected") {
           updateStatus("connecting");
           armConnectingTimer();
@@ -318,7 +412,16 @@ export function useWebRTC({
       if (stream) {
         sendRef.current({
           type: "video.state",
-          data: { cameraOn: true, micOn: true, available: true },
+          data: {
+            cameraOn: cameraOnRef.current,
+            micOn: micOnRef.current,
+            available: true,
+          },
+        });
+      } else {
+        sendRef.current({
+          type: "video.state",
+          data: { cameraOn: false, micOn: false, available: false },
         });
       }
 
@@ -345,32 +448,47 @@ export function useWebRTC({
     }
 
     async function start() {
-      updateStatus("requesting");
       setPartnerCameraOn(true);
       setPartnerMicOn(true);
       partnerMediaAvailableRef.current = true;
       setPartnerMediaAvailable(true);
 
-      let stream: MediaStream | null = null;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: true,
-        });
-      } catch (err: any) {
-        if (cancelled) return;
-        const denied =
-          err?.name === "NotAllowedError" ||
-          err?.name === "PermissionDeniedError";
-        updateStatus(denied ? "permission_denied" : "error");
-        setCameraOn(false);
-        setMicOn(false);
-        sendRef.current({
-          type: "video.state",
-          data: { cameraOn: false, micOn: false, available: false },
-        });
-        await startPeer(null);
-        return;
+      let stream: MediaStream | null = streamHasLiveTracks(localStreamRef.current)
+        ? localStreamRef.current
+        : null;
+
+      // Fallback if Start Chatting did not acquire media (e.g. auto-requeue race).
+      if (!stream && statusRef.current !== "permission_denied") {
+        updateStatus("requesting");
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: true,
+          });
+          if (cancelled) {
+            for (const track of stream.getTracks()) track.stop();
+            return;
+          }
+          localStreamRef.current = stream;
+          setLocalStream(stream);
+        } catch (err: any) {
+          if (cancelled) return;
+          const denied =
+            err?.name === "NotAllowedError" ||
+            err?.name === "PermissionDeniedError";
+          updateStatus(denied ? "permission_denied" : "error");
+          setCameraOn(false);
+          setMicOn(false);
+          cameraOnRef.current = false;
+          micOnRef.current = false;
+          await startPeer(null);
+          return;
+        }
+      }
+
+      if (!stream && statusRef.current !== "permission_denied" && statusRef.current !== "error") {
+        // Previously denied via ensureLocalMedia; keep that status.
+        updateStatus("permission_denied");
       }
 
       await startPeer(stream);
@@ -380,13 +498,13 @@ export function useWebRTC({
 
     return () => {
       cancelled = true;
-      teardown();
+      teardownPeer();
     };
   }, [
     enabled,
     roomId,
     initiator,
-    teardown,
+    teardownPeer,
     flushPendingSignals,
     updateStatus,
     armConnectingTimer,
@@ -432,6 +550,8 @@ export function useWebRTC({
     partnerMediaAvailable,
     toggleCamera,
     toggleMic,
+    ensureLocalMedia,
+    releaseLocalMedia,
     teardownVideo: teardown,
   };
 }
