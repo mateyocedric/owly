@@ -96,9 +96,9 @@ export function ChatPage() {
         {seo}
         <PageContainer wide className="flex min-h-0 w-full flex-1 flex-col !py-4">
         <div className="mb-3 flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+          <div className="flex w-full min-w-0 flex-1 items-center justify-between gap-3">
             <StatusIndicator state={connectionState} commonInterests={commonInterests} />
-            <OnlineCountBadge count={onlineCount} />
+            <OnlineCountBadge count={onlineCount} className="shrink-0" />
           </div>
           <SafetyReminder />
         </div>
@@ -200,18 +200,16 @@ export function ChatPage() {
           }
           chrome={
             <div>
-              <div className="px-3 pt-1 lg:px-4">
-                <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-                  <StatusIndicator
-                    state={connectionState}
-                    commonInterests={commonInterests}
-                    className="border-white/20 bg-black/50 text-white/90 backdrop-blur-sm lg:border-[var(--sx-hairline-on-dark)] lg:bg-black/40 lg:text-[var(--sx-on-primary)]"
-                  />
-                  <OnlineCountBadge
-                    count={onlineCount}
-                    className="text-white/70 lg:text-[var(--sx-on-primary-mute)]"
-                  />
-                </div>
+              <div className="flex w-full items-center justify-between gap-3 px-3 pt-1 lg:px-4">
+                <StatusIndicator
+                  state={connectionState}
+                  commonInterests={commonInterests}
+                  className="min-w-0 border-white/20 bg-black/50 text-white/90 backdrop-blur-sm lg:border-[var(--sx-hairline-on-dark)] lg:bg-black/40 lg:text-[var(--sx-on-primary)]"
+                />
+                <OnlineCountBadge
+                  count={onlineCount}
+                  className="shrink-0 text-white/70 lg:text-[var(--sx-on-primary-mute)]"
+                />
               </div>
               <ChatControls
                 connectionState={connectionState}

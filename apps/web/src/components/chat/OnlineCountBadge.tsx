@@ -9,11 +9,11 @@ export function OnlineCountBadge({ count, className = "" }: OnlineCountBadgeProp
   }
 
   return (
-    <p
-      className={`sx-caption uppercase tracking-wider text-[var(--sx-on-primary-mute)] ${className}`}
+    <span
+      className={`sx-caption shrink-0 uppercase tracking-wider text-[var(--sx-on-primary-mute)] ${className}`}
       aria-live="polite"
     >
       {count.toLocaleString()} online
-    </p>
+    </span>
   );
 }
