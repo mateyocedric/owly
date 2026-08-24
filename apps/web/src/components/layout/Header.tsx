@@ -21,7 +21,6 @@ export function Header() {
             <span className="text-sm font-bold uppercase tracking-[0.12em] text-[var(--sx-on-primary)]">
               Owly
             </span>
-            <span className="sx-eyebrow text-[10px] leading-none">Safe Random Chat</span>
           </div>
         </Link>
 

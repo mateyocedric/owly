@@ -23,7 +23,6 @@ export function LandingPage() {
   return (
     <PageContainer wide className="space-y-16 py-16 sm:py-24">
       <div className="mx-auto max-w-3xl space-y-8 text-center">
-        <p className="sx-eyebrow">Next-Gen Private Anonymous Chat</p>
 
         <h1 className="sx-display-hero">
           Talk to strangers.
