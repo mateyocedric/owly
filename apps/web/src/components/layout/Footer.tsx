@@ -19,12 +19,6 @@ export function Footer() {
           <Link to="/guidelines" className="sx-nav-link px-0 py-0">
             Guidelines
           </Link>
-          <Link to="/components" className="sx-nav-link px-0 py-0 opacity-60">
-            Components
-          </Link>
-          <Link to="/admin" className="sx-nav-link px-0 py-0 opacity-60">
-            Staff
-          </Link>
         </div>
       </div>
     </footer>

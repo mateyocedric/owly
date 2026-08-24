@@ -91,6 +91,39 @@
   color: var(--sx-on-primary);
 }
 
+.sx-loading-dots {
+  display: inline-block;
+  width: 1.5em;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  vertical-align: bottom;
+}
+
+.sx-loading-dots::after {
+  content: "...";
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: bottom;
+  animation: sx-loading-dots 1.4s steps(4, jump-none) infinite;
+}
+
+@keyframes sx-loading-dots {
+  0% {
+    width: 0;
+  }
+  100% {
+    width: 1.5em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sx-loading-dots::after {
+    animation: none;
+    width: 1.5em;
+  }
+}
+
 .sx-body {
   font-size: 16px;
   font-weight: 400;

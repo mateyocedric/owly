@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { MessageSquare } from "lucide-react";
 import { useChat } from "../hooks/useChat.js";
@@ -21,7 +21,6 @@ export function ChatPage() {
     session,
     connectionState,
     commonInterests,
-    queuePosition,
     messages,
     partnerTyping,
     sendCooldownSeconds,
@@ -112,7 +111,6 @@ export function ChatPage() {
             </div>
           ) : (
             <WaitingScreen
-              position={queuePosition}
               interests={session?.interests}
               onCancel={stopChat}
             />
