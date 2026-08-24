@@ -1,5 +1,7 @@
 import { z } from "zod";
-import { RATE_LIMITS } from "../constants.js";
+import { CHAT_REACTIONS, RATE_LIMITS } from "../constants.js";
+
+const chatReactionEmojiSchema = z.enum(CHAT_REACTIONS);
 
 // ─── Client → Server Events ─────────────────────────────────────────────────
 
@@ -26,6 +28,13 @@ export const chatMessageSchema = z.object({
 
 export const chatTypingSchema = z.object({
   type: z.literal("chat.typing"),
+});
+
+export const chatReactionSchema = z.object({
+  type: z.literal("chat.reaction"),
+  data: z.object({
+    emoji: chatReactionEmojiSchema,
+  }),
 });
 
 export const chatNextSchema = z.object({
@@ -97,6 +106,7 @@ export const clientEventSchema = z.discriminatedUnion("type", [
   queueLeaveSchema,
   chatMessageSchema,
   chatTypingSchema,
+  chatReactionSchema,
   chatNextSchema,
   chatStopSchema,
   chatReportSchema,
@@ -156,6 +166,13 @@ export const serverChatTypingSchema = z.object({
   type: z.literal("chat.typing"),
 });
 
+export const serverChatReactionSchema = z.object({
+  type: z.literal("chat.reaction"),
+  data: z.object({
+    emoji: chatReactionEmojiSchema,
+  }),
+});
+
 export const serverPartnerLeftSchema = z.object({
   type: z.literal("chat.partner_left"),
   data: z.object({
@@ -196,6 +213,7 @@ export const serverEventSchema = z.discriminatedUnion("type", [
   serverMatchFoundSchema,
   serverChatMessageSchema,
   serverChatTypingSchema,
+  serverChatReactionSchema,
   serverPartnerLeftSchema,
   serverChatEndedSchema,
   serverModerationWarningSchema,

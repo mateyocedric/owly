@@ -1,7 +1,13 @@
 import React, { memo, useCallback, useEffect, useRef, useState } from "react";
 import { Mic, MicOff, Video, VideoOff, Loader2 } from "lucide-react";
+import type { ChatReactionEmoji } from "@owly/shared";
 import type { VideoStatus } from "../../hooks/useWebRTC.js";
 import { ViewSwitcher, type VideoPrimaryView } from "./ViewSwitcher.js";
+import { ReactionBar } from "./ReactionBar.js";
+import {
+  ReactionBurstOverlay,
+  type ReactionBurst,
+} from "./ReactionBurstOverlay.js";
 
 const mediaToggleClass =
   "inline-flex size-9 shrink-0 items-center justify-center rounded-sm border border-white/30 bg-black/50 text-white backdrop-blur-sm transition-colors hover:bg-white/20 disabled:pointer-events-none disabled:opacity-40";
@@ -28,6 +34,10 @@ interface VideoPanelProps {
   onToggleCamera: () => void;
   onToggleMic: () => void;
   remoteEmptyLabel?: string;
+  reactionsEnabled?: boolean;
+  reactionBursts?: ReactionBurst[];
+  onSendReaction?: (emoji: ChatReactionEmoji) => void;
+  onReactionBurstEnd?: (id: string) => void;
 }
 
 const VideoTile = memo(function VideoTile({
@@ -105,6 +115,10 @@ export const VideoPanel = memo(function VideoPanel({
   onToggleCamera,
   onToggleMic,
   remoteEmptyLabel,
+  reactionsEnabled = false,
+  reactionBursts = [],
+  onSendReaction,
+  onReactionBurstEnd,
 }: VideoPanelProps) {
   const [primaryView, setPrimaryView] = useState<VideoPrimaryView>("remote");
   const [pipExpanded, setPipExpanded] = useState(false);
@@ -118,6 +132,13 @@ export const VideoPanel = memo(function VideoPanel({
   const togglePipSize = useCallback(() => {
     setPipExpanded((open) => !open);
   }, []);
+
+  const handleReact = useCallback(
+    (emoji: ChatReactionEmoji) => {
+      onSendReaction?.(emoji);
+    },
+    [onSendReaction]
+  );
 
   const statusMessage =
     status === "requesting"
@@ -184,7 +205,12 @@ export const VideoPanel = memo(function VideoPanel({
         />
       </div>
 
-      <div className="absolute left-3 top-[7.25rem] z-10 flex items-center gap-2 lg:bottom-3 lg:top-auto">
+      <ReactionBurstOverlay
+        bursts={reactionBursts}
+        onBurstEnd={onReactionBurstEnd ?? (() => {})}
+      />
+
+      <div className="absolute left-3 top-[7.25rem] z-10 flex max-w-[calc(100%-1.5rem)] flex-wrap items-center gap-2 lg:bottom-3 lg:top-auto">
         <button
           type="button"
           className={mediaToggleClass}
@@ -203,6 +229,9 @@ export const VideoPanel = memo(function VideoPanel({
         >
           {cameraOn ? <Video className="size-4" /> : <VideoOff className="size-4" />}
         </button>
+        {onSendReaction ? (
+          <ReactionBar disabled={!reactionsEnabled} onReact={handleReact} />
+        ) : null}
       </div>
 
       {(status === "requesting" || status === "connecting") && partnerMediaAvailable && (

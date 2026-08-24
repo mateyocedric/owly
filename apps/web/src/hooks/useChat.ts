@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import { RATE_LIMITS } from "@owly/shared";
-import type { ClientEvent } from "@owly/shared";
+import type { ChatReactionEmoji, ClientEvent } from "@owly/shared";
 import { useAppStore } from "../lib/store.js";
 import { OwlyWSClient } from "../lib/ws-client.js";
 import { apiFetch } from "../lib/api.js";
@@ -9,6 +9,18 @@ import {
   useWebRTC,
   type WebrtcInboundHandlers,
 } from "./useWebRTC.js";
+import type { ReactionBurst } from "../components/chat/ReactionBurstOverlay.js";
+
+function createReactionBurst(
+  emoji: ChatReactionEmoji,
+  from: "self" | "partner"
+): ReactionBurst {
+  // Self bursts lean left; partner bursts lean right, with light random drift.
+  const xBase = from === "self" ? 28 : 72;
+  const x = Math.min(88, Math.max(12, xBase + (Math.random() * 16 - 8)));
+  const drift = (Math.random() * 48 - 24) * (from === "self" ? 1 : -1);
+  return { id: nanoid(), emoji, from, x, drift };
+}
 
 export function useChat() {
   const store = useAppStore();
@@ -19,6 +31,8 @@ export function useChat() {
   const cooldownEndRef = useRef(0);
   const lastOutgoingIdRef = useRef<string | null>(null);
   const webrtcHandlersRef = useRef<WebrtcInboundHandlers | null>(null);
+  const lastReactionTimeRef = useRef(0);
+  const recentReactionTimesRef = useRef<number[]>([]);
   const joinQueueRef = useRef<(interests?: string[]) => Promise<void>>(
     async () => {}
   );
@@ -27,6 +41,22 @@ export function useChat() {
   const findingReconnectsRef = useRef(0);
   const [sendCooldownSeconds, setSendCooldownSeconds] = useState(0);
   const [webrtcInitiator, setWebrtcInitiator] = useState<boolean | null>(null);
+  const [reactionBursts, setReactionBursts] = useState<ReactionBurst[]>([]);
+
+  const clearReactionBursts = useCallback(() => {
+    setReactionBursts([]);
+  }, []);
+
+  const pushReactionBurst = useCallback(
+    (emoji: ChatReactionEmoji, from: "self" | "partner") => {
+      setReactionBursts((prev) => [...prev, createReactionBurst(emoji, from)]);
+    },
+    []
+  );
+
+  const removeReactionBurst = useCallback((id: string) => {
+    setReactionBursts((prev) => prev.filter((burst) => burst.id !== id));
+  }, []);
 
   const sendClientEvent = useCallback((event: ClientEvent) => {
     wsClientRef.current?.send(event);
@@ -199,7 +229,10 @@ export function useChat() {
             markQueueSettled();
             clearAutoQueueTimer();
             clearSendCooldown();
+            clearReactionBursts();
             lastOutgoingIdRef.current = null;
+            lastReactionTimeRef.current = 0;
+            recentReactionTimesRef.current = [];
             setWebrtcInitiator(event.data.initiator);
             store.setConnectionState("connected");
             store.setRoomId(event.data.roomId, event.data.commonInterests);
@@ -231,7 +264,12 @@ export function useChat() {
             }, 3000);
             break;
 
+          case "chat.reaction":
+            pushReactionBurst(event.data.emoji, "partner");
+            break;
+
           case "chat.partner_left":
+            clearReactionBursts();
             setWebrtcInitiator(null);
             store.setRoomId(null);
             store.setConnectionState("partner_left");
@@ -243,6 +281,7 @@ export function useChat() {
           case "chat.ended":
             markQueueSettled();
             clearAutoQueueTimer();
+            clearReactionBursts();
             setWebrtcInitiator(null);
             store.setRoomId(null);
             store.setConnectionState("idle");
@@ -305,6 +344,8 @@ export function useChat() {
     markQueueSettled,
     clearAutoQueueTimer,
     clearSendCooldown,
+    clearReactionBursts,
+    pushReactionBurst,
     startSendCooldown,
   ]);
 
@@ -367,6 +408,33 @@ export function useChat() {
     if (!wsClientRef.current) return;
     wsClientRef.current.send({ type: "chat.typing" });
   }, []);
+
+  const sendReaction = useCallback(
+    (emoji: ChatReactionEmoji) => {
+      if (!wsClientRef.current) return;
+      if (useAppStore.getState().connectionState !== "connected") return;
+
+      const now = Date.now();
+      const recent = recentReactionTimesRef.current.filter(
+        (t) => now - t < RATE_LIMITS.REACTION_BURST_WINDOW_MS
+      );
+      const tooFast =
+        now - lastReactionTimeRef.current < RATE_LIMITS.REACTION_MIN_INTERVAL_MS;
+      const bursting = recent.length >= RATE_LIMITS.REACTION_BURST_LIMIT;
+      if (tooFast || bursting) return;
+
+      lastReactionTimeRef.current = now;
+      recent.push(now);
+      recentReactionTimesRef.current = recent;
+
+      pushReactionBurst(emoji, "self");
+      wsClientRef.current.send({
+        type: "chat.reaction",
+        data: { emoji },
+      });
+    },
+    [pushReactionBurst]
+  );
 
   const nextChat = useCallback(() => {
     if (!wsClientRef.current) {
@@ -458,9 +526,12 @@ export function useChat() {
   return {
     ...store,
     sendCooldownSeconds,
+    reactionBursts,
     joinQueue,
     sendMessage,
     sendTyping,
+    sendReaction,
+    removeReactionBurst,
     nextChat,
     stopChat,
     blockPartner,

@@ -21,7 +21,17 @@ export const RATE_LIMITS = {
   MAX_MESSAGE_LENGTH: 2000,
   /** Min message length */
   MIN_MESSAGE_LENGTH: 1,
+  /** Min interval between live video reactions */
+  REACTION_MIN_INTERVAL_MS: 400,
+  /** Rolling window used to detect reaction bursts */
+  REACTION_BURST_WINDOW_MS: 3000,
+  /** Reactions allowed inside the burst window before extras are dropped */
+  REACTION_BURST_LIMIT: 8,
 } as const;
+
+/** Preset live video reaction emojis (Meet/Zoom-style) */
+export const CHAT_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥"] as const;
+export type ChatReactionEmoji = (typeof CHAT_REACTIONS)[number];
 
 export const MATCHMAKING = {
   /** Seconds to wait for interest-based match before falling back to random */

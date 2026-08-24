@@ -91,6 +91,11 @@ export async function handleClientEvent(
       break;
     }
 
+    case "chat.reaction": {
+      await handleChatReaction(ws, parsed.data.emoji);
+      break;
+    }
+
     case "chat.next": {
       await handleChatNext(ws);
       break;
@@ -425,6 +430,41 @@ async function handleChatTyping(ws: ServerWebSocket<WSContextData>) {
   const partnerId = room.participants.find((p) => p !== sessionId);
   if (partnerId) {
     connectionManager.send(partnerId, { type: "chat.typing" });
+  }
+}
+
+async function handleChatReaction(
+  ws: ServerWebSocket<WSContextData>,
+  emoji: Extract<ClientEvent, { type: "chat.reaction" }>["data"]["emoji"]
+) {
+  const { sessionId, roomId } = ws.data;
+  if (!roomId) return;
+
+  const now = Date.now();
+  const recent = (ws.data.recentReactionTimes ?? []).filter(
+    (t) => now - t < RATE_LIMITS.REACTION_BURST_WINDOW_MS
+  );
+  const tooFast =
+    ws.data.lastReactionTime != null &&
+    now - ws.data.lastReactionTime < RATE_LIMITS.REACTION_MIN_INTERVAL_MS;
+  const bursting = recent.length >= RATE_LIMITS.REACTION_BURST_LIMIT;
+
+  // Silently drop spam — do not send RATE_LIMITED (that path affects chat messages).
+  if (tooFast || bursting) return;
+
+  ws.data.lastReactionTime = now;
+  recent.push(now);
+  ws.data.recentReactionTimes = recent;
+
+  const room = await getRoomCache(roomId);
+  if (!room) return;
+
+  const partnerId = room.participants.find((p) => p !== sessionId);
+  if (partnerId) {
+    connectionManager.send(partnerId, {
+      type: "chat.reaction",
+      data: { emoji },
+    });
   }
 }
 

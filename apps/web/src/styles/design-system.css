@@ -117,10 +117,36 @@
   }
 }
 
+@keyframes owly-reaction-float {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 0) scale(0.55);
+  }
+  12% {
+    opacity: 1;
+    transform: translate(-50%, -12%) scale(1.15);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--owly-reaction-drift, 0px)), -140%)
+      scale(1);
+  }
+}
+
+.owly-reaction-burst {
+  animation: owly-reaction-float 1.7s ease-out forwards;
+  will-change: transform, opacity;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sx-loading-dots::after {
     animation: none;
     width: 1.5em;
+  }
+
+  .owly-reaction-burst {
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
   }
 }
 

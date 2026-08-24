@@ -25,9 +25,12 @@ export function ChatPage() {
     messages,
     partnerTyping,
     sendCooldownSeconds,
+    reactionBursts,
     joinQueue,
     sendMessage,
     sendTyping,
+    sendReaction,
+    removeReactionBurst,
     nextChat,
     stopChat,
     blockPartner,
@@ -149,6 +152,10 @@ export function ChatPage() {
                   onToggleCamera={toggleCamera}
                   onToggleMic={toggleMic}
                   remoteEmptyLabel={isPartnerLeft ? "Partner disconnected" : undefined}
+                  reactionsEnabled={isConnected}
+                  reactionBursts={reactionBursts}
+                  onSendReaction={sendReaction}
+                  onReactionBurstEnd={removeReactionBurst}
                 />
                 {isPartnerLeft ? (
                   <div className="pointer-events-none absolute inset-0 z-[15] flex items-center justify-center bg-black/50 pb-[45%] lg:pb-0">

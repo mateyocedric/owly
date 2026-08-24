@@ -11,6 +11,8 @@ export interface WSContextData {
   messagePenaltyUntil?: number;
   recentMessageTimes?: number[];
   lastSkipTime?: number;
+  lastReactionTime?: number;
+  recentReactionTimes?: number[];
 }
 
 class ConnectionManager {
