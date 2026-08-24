@@ -15,6 +15,7 @@ import { websocketHandler } from "./ws/handler.js";
 import { validateSessionToken } from "./services/session.js";
 import { spaFallback } from "./static.js";
 import type { WSContextData } from "./ws/connection-manager.js";
+import { startQueuePruner } from "./matchmaking/prune.js";
 
 // Initialize Database connection
 await connectDB();
@@ -97,3 +98,7 @@ const server = Bun.serve<WSContextData>({
 });
 
 console.log(`🦉 Owly API & WebSocket server running at http://${server.hostname}:${server.port}`);
+
+if (env.NODE_ENV !== "test") {
+  startQueuePruner();
+}

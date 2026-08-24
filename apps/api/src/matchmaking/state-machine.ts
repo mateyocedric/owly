@@ -48,3 +48,17 @@ export async function setUserState(
 export async function clearUserState(sessionId: string) {
   await redis.del(`${REDIS_KEYS.PRESENCE}${sessionId}`);
 }
+
+/** Keep queue/room presence across a socket replace instead of forcing idle. */
+export function presenceAfterReconnect(previous: SessionPresence): {
+  state: UserState;
+  roomId?: string | null;
+} {
+  if (previous.state === "queued") {
+    return { state: "queued" };
+  }
+  if (previous.state === "matched" && previous.roomId) {
+    return { state: "matched", roomId: previous.roomId };
+  }
+  return { state: "idle", roomId: null };
+}

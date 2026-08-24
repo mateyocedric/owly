@@ -2,10 +2,15 @@ import { redis } from "../lib/redis.js";
 import { REDIS_KEYS } from "@owly/shared";
 import { ATOMIC_MATCH_SCRIPT } from "../lib/lua-scripts.js";
 import { isBlocked } from "../services/block.js";
-import { requeueSession } from "./queue.js";
-import { getUserState } from "./state-machine.js";
+import { requeueSession, removeFromQueue } from "./queue.js";
+import { getUserState, setUserState } from "./state-machine.js";
 import { connectionManager } from "../ws/connection-manager.js";
 import { env } from "../env.js";
+import { hasLiveSocket, matchingOnlineCutoff } from "./liveness.js";
+
+function matchScriptTail(skipped: Set<string>): string[] {
+  return [String(matchingOnlineCutoff()), ...skipped];
+}
 
 export async function tryAtomicMatch(
   currentSessionId: string
@@ -15,12 +20,13 @@ export async function tryAtomicMatch(
   for (let attempt = 0; attempt < 5; attempt++) {
     const result = (await redis.eval(
       ATOMIC_MATCH_SCRIPT,
-      1,
+      2,
       REDIS_KEYS.QUEUE_GENERAL,
+      REDIS_KEYS.ONLINE_SESSIONS,
       currentSessionId,
       REDIS_KEYS.QUEUE_INTEREST,
       REDIS_KEYS.QUEUE_SESSION_INTERESTS,
-      ...[...skipped]
+      ...matchScriptTail(skipped)
     )) as [string, string] | null;
 
     if (!result || result.length < 2) {
@@ -52,6 +58,20 @@ export async function restoreQueuedSession(sessionId: string) {
   );
 }
 
+export async function dropQueuedSession(sessionId: string) {
+  await removeFromQueue(sessionId);
+  await setUserState(sessionId, "disconnected", { roomId: null });
+}
+
+/** Requeue a live waiter; purge anyone without an open socket. */
+export async function restoreLiveOrDrop(sessionId: string) {
+  if (hasLiveSocket(sessionId)) {
+    await restoreQueuedSession(sessionId);
+    return;
+  }
+  await dropQueuedSession(sessionId);
+}
+
 async function restoreBoth(user1: string, user2: string) {
-  await Promise.all([restoreQueuedSession(user1), restoreQueuedSession(user2)]);
+  await Promise.all([restoreLiveOrDrop(user1), restoreLiveOrDrop(user2)]);
 }
