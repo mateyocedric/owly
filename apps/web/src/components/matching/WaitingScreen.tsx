@@ -1,4 +1,5 @@
 import { X } from "lucide-react";
+import { OwlyLogo } from "../brand/OwlyLogo.js";
 import { GhostButton } from "../design/index.js";
 
 interface WaitingScreenProps {
@@ -19,14 +20,7 @@ export function WaitingScreen({
 
   return (
     <div className="mx-auto my-auto flex max-w-md flex-col items-center justify-center space-y-6 p-8 text-center">
-      <span className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white p-2">
-        <img
-          src="/owly-vector.svg"
-          alt=""
-          draggable={false}
-          className="block size-full object-contain"
-        />
-      </span>
+      <OwlyLogo size="md" alt="" />
 
       <div className="space-y-2">
         <h3 className="sx-panel-title">

@@ -15,20 +15,8 @@ import { OnlineCountBadge } from "../components/chat/OnlineCountBadge.js";
 import { useOnlineCount } from "../hooks/useOnlineCount.js";
 import { useAppStore } from "../lib/store.js";
 import { Seo } from "../components/Seo.js";
+import { OwlyLogo } from "../components/brand/OwlyLogo.js";
 import { GhostButton, PageContainer } from "../components/design/index.js";
-
-function AnimatedLogo() {
-  return (
-    <span className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white p-2">
-      <img
-        src="/owly-vector.svg"
-        alt=""
-        draggable={false}
-        className="block size-full object-contain"
-      />
-    </span>
-  );
-}
 
 export function ChatPage() {
   const navigate = useNavigate();
@@ -104,45 +92,57 @@ export function ChatPage() {
         </div>
 
         <div className="sx-chat-shell flex flex-1 flex-col">
-          {isIdle ? (
-            <div className="flex flex-1 flex-col items-center justify-center space-y-6 p-8 text-center">
-              <AnimatedLogo />
-              <div className="max-w-sm space-y-2">
-                <h3 className="sx-panel-title">Ready for a conversation?</h3>
-                <p className="sx-caption">
-                  Enter the matching queue to connect with a random stranger.
-                </p>
-              </div>
-              <GhostButton onClick={() => joinQueue()}>Start Chatting</GhostButton>
-            </div>
-          ) : isError ? (
-            <div className="flex flex-1 flex-col items-center justify-center space-y-6 p-8 text-center">
-              <AnimatedLogo />
-              <div className="max-w-sm space-y-2">
-                <h3 className="sx-panel-title">Connection error</h3>
-                <p className="sx-caption">
-                  Could not start a chat session. Check that the API is running, then try again.
-                </p>
-              </div>
-              <GhostButton onClick={() => joinQueue()}>Try Again</GhostButton>
-            </div>
-          ) : isDisconnected ? (
-            <div className="flex flex-1 flex-col items-center justify-center space-y-6 p-8 text-center">
-              <AnimatedLogo />
-              <div className="max-w-sm space-y-2">
-                <h3 className="sx-panel-title">Disconnected</h3>
-                <p className="sx-caption">
-                  Connection lost. Rejoining the queue in a moment...
-                </p>
-              </div>
-              <GhostButton onClick={() => joinQueue()}>Rejoin Now</GhostButton>
-            </div>
-          ) : (
+          {isFinding ? (
             <WaitingScreen
               interests={session?.interests}
               onlineCount={onlineCount}
               onCancel={stopChat}
             />
+          ) : (
+            <div className="flex flex-1 flex-col items-center justify-center space-y-6 p-8 text-center">
+              <OwlyLogo size="md" alt="" />
+
+              {isIdle ? (
+                <>
+                  <div className="max-w-sm space-y-2">
+                    <h3 className="sx-panel-title">
+                      Ready for a conversation?
+                    </h3>
+                    <p className="sx-caption">
+                      Enter the matching queue to connect with a random stranger.
+                    </p>
+                  </div>
+                  <GhostButton onClick={() => joinQueue()}>
+                    Start Chatting
+                  </GhostButton>
+                </>
+              ) : isError ? (
+                <>
+                  <div className="max-w-sm space-y-2">
+                    <h3 className="sx-panel-title">Connection error</h3>
+                    <p className="sx-caption">
+                      Could not start a chat session. Check that the API is running,
+                      then try again.
+                    </p>
+                  </div>
+                  <GhostButton onClick={() => joinQueue()}>
+                    Try Again
+                  </GhostButton>
+                </>
+              ) : (
+                <>
+                  <div className="max-w-sm space-y-2">
+                    <h3 className="sx-panel-title">Disconnected</h3>
+                    <p className="sx-caption">
+                      Connection lost. Rejoining the queue in a moment...
+                    </p>
+                  </div>
+                  <GhostButton onClick={() => joinQueue()}>
+                    Rejoin Now
+                  </GhostButton>
+                </>
+              )}
+            </div>
           )}
         </div>
 
