@@ -6,6 +6,10 @@ import { requeueSession } from "./queue.js";
 import { getUserState } from "./state-machine.js";
 import { connectionManager } from "../ws/connection-manager.js";
 import { env } from "../env.js";
+import {
+  isLiveConnection,
+  markUnreachableOffline,
+} from "./live-session.js";
 
 export async function tryAtomicMatch(
   currentSessionId: string
@@ -28,14 +32,32 @@ export async function tryAtomicMatch(
     }
 
     const [user1, user2] = result;
+    const partner = user1 === currentSessionId ? user2 : user1;
     const blocked = await isBlocked(user1, user2);
-    if (!blocked) {
-      return [user1, user2];
+    if (blocked) {
+      skipped.add(partner);
+      await restoreBoth(user1, user2);
+      continue;
     }
 
-    const partner = user1 === currentSessionId ? user2 : user1;
-    skipped.add(partner);
-    await restoreBoth(user1, user2);
+    if (!isLiveConnection(partner)) {
+      skipped.add(partner);
+      await Promise.all([
+        restoreQueuedSession(currentSessionId),
+        markUnreachableOffline(partner),
+      ]);
+      continue;
+    }
+
+    if (!isLiveConnection(currentSessionId)) {
+      await Promise.all([
+        restoreQueuedSession(partner),
+        markUnreachableOffline(currentSessionId),
+      ]);
+      return null;
+    }
+
+    return [user1, user2];
   }
 
   return null;

@@ -9,10 +9,13 @@ async function loadConnectionManager() {
   return mod.connectionManager;
 }
 
-function mockSocket(sessionId: string): ServerWebSocket<WSContextData> {
+function mockSocket(
+  sessionId: string,
+  readyState = 1
+): ServerWebSocket<WSContextData> {
   return {
     data: { sessionId, ip: "127.0.0.1" },
-    readyState: 1,
+    readyState,
     close: vi.fn(),
     send: vi.fn(),
   } as unknown as ServerWebSocket<WSContextData>;
@@ -34,6 +37,7 @@ describe("ConnectionManager", () => {
     expect(first.close).toHaveBeenCalledWith(4000, "Replaced by newer connection");
     expect(manager.get("session-a")).toBe(second);
     expect(manager.count).toBe(1);
+    expect(manager.isLive("session-a")).toBe(true);
   });
 
   it("does not unregister when an replaced socket closes", async () => {
@@ -62,5 +66,16 @@ describe("ConnectionManager", () => {
     expect(wentOffline).toBe(true);
     expect(manager.has("session-a")).toBe(false);
     expect(manager.count).toBe(0);
+    expect(manager.isLive("session-a")).toBe(false);
+  });
+
+  it("treats a registered but non-open socket as not live", async () => {
+    const manager = await loadConnectionManager();
+    const ws = mockSocket("session-a", 3);
+
+    manager.register("session-a", ws);
+
+    expect(manager.has("session-a")).toBe(true);
+    expect(manager.isLive("session-a")).toBe(false);
   });
 });

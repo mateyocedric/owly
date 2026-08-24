@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from "react";
-import { CHAT_REACTION_BY_ID, RATE_LIMITS } from "@owly/shared";
+import { CHAT_REACTION_BY_ID, MATCHMAKING, RATE_LIMITS, WS_CLOSE } from "@owly/shared";
 import type { ChatReactionId, ClientEvent } from "@owly/shared";
 import { useAppStore } from "../lib/store.js";
 import { OwlyWSClient } from "../lib/ws-client.js";
@@ -45,6 +45,7 @@ export function useChat() {
   const joiningRef = useRef(false);
   const reconnectSoonRef = useRef<number | null>(null);
   const findingReconnectsRef = useRef(0);
+  const autoRequeueCountRef = useRef(0);
   const [sendCooldownSeconds, setSendCooldownSeconds] = useState(0);
   const [webrtcInitiator, setWebrtcInitiator] = useState<boolean | null>(null);
   const [reactionBursts, setReactionBursts] = useState<ReactionBurst[]>([]);
@@ -103,11 +104,19 @@ export function useChat() {
   const markQueueSettled = useCallback(() => {
     joiningRef.current = false;
     findingReconnectsRef.current = 0;
+    autoRequeueCountRef.current = 0;
     clearReconnectSoon();
   }, [clearReconnectSoon]);
 
   const scheduleAutoQueue = useCallback(
     (message: string) => {
+      autoRequeueCountRef.current += 1;
+      if (autoRequeueCountRef.current > MATCHMAKING.MAX_AUTO_REQUEUES) {
+        joiningRef.current = false;
+        useAppStore.getState().setConnectionState("idle");
+        wsClientRef.current?.disconnect();
+        return;
+      }
       useAppStore.getState().addMessage({
         id: nanoid(),
         sender: "system",
@@ -198,15 +207,25 @@ export function useChat() {
     if (!wsClientRef.current) {
       wsClientRef.current = new OwlyWSClient(session.token);
 
-      wsClientRef.current.onClose(() => {
+      wsClientRef.current.onClose((code) => {
         const { connectionState } = useAppStore.getState();
         setWebrtcInitiator(null);
         store.setRoomId(null);
 
+        if (
+          code === WS_CLOSE.REPLACED ||
+          code === WS_CLOSE.EMPTY_MATCH_LIMIT
+        ) {
+          markQueueSettled();
+          store.setConnectionState("idle");
+          releaseLocalMediaRef.current();
+          return;
+        }
+
         if (connectionState === "finding" || joiningRef.current) {
           store.setConnectionState("finding");
           findingReconnectsRef.current += 1;
-          if (findingReconnectsRef.current > 3) {
+          if (findingReconnectsRef.current > MATCHMAKING.MAX_AUTO_REQUEUES) {
             joiningRef.current = false;
             store.setConnectionState("error");
             return;
@@ -220,10 +239,7 @@ export function useChat() {
           return;
         }
 
-        if (
-          connectionState === "connected" ||
-          connectionState === "partner_left"
-        ) {
+        if (connectionState === "connected") {
           store.setConnectionState("disconnected");
           scheduleAutoQueue(
             "Connection lost. Rejoining the queue in 2 seconds..."
@@ -349,6 +365,11 @@ export function useChat() {
               if (connectionState === "finding" && !roomId) {
                 store.setConnectionState("idle");
               }
+            }
+            if (event.data.code === "EMPTY_MATCH_LIMIT") {
+              markQueueSettled();
+              store.setConnectionState("idle");
+              releaseLocalMediaRef.current();
             }
             store.addMessage({
               id: nanoid(),
@@ -507,6 +528,7 @@ export function useChat() {
     lastOutgoingIdRef.current = null;
     setWebrtcInitiator(null);
     wsClientRef.current.send({ type: "chat.stop" });
+    wsClientRef.current.disconnect();
     store.setRoomId(null);
     store.setConnectionState("idle");
     releaseLocalMediaRef.current();
@@ -558,6 +580,7 @@ export function useChat() {
       if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
       joiningRef.current = false;
       findingReconnectsRef.current = 0;
+      autoRequeueCountRef.current = 0;
       const client = wsClientRef.current;
       wsClientRef.current = null;
       if (client) {

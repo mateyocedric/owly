@@ -1,7 +1,7 @@
 import type { ServerWebSocket, WebSocketHandler } from "bun";
 import { connectionManager, type WSContextData } from "./connection-manager.js";
 import { handleClientEvent, endCurrentRoom, clearGeneralFallbackTimer } from "./events.js";
-import { setUserState } from "../matchmaking/state-machine.js";
+import { getUserState, setUserState } from "../matchmaking/state-machine.js";
 import { removeFromQueue } from "../matchmaking/queue.js";
 import { markOnline, markOffline } from "../services/online.js";
 import { logEvent } from "../lib/logger.js";
@@ -11,7 +11,20 @@ export const websocketHandler: WebSocketHandler<WSContextData> = {
   async open(ws: ServerWebSocket<WSContextData>) {
     connectionManager.register(ws.data.sessionId, ws);
     await markOnline(ws.data.sessionId);
-    await setUserState(ws.data.sessionId, "idle", { roomId: null });
+
+    const existing = await getUserState(ws.data.sessionId);
+    if (existing.state === "matched" && existing.roomId) {
+      ws.data.roomId = existing.roomId;
+      await setUserState(ws.data.sessionId, "matched", {
+        roomId: existing.roomId,
+      });
+    } else if (existing.state === "queued") {
+      await setUserState(ws.data.sessionId, "queued", {
+        queuedAt: existing.queuedAt,
+      });
+    } else {
+      await setUserState(ws.data.sessionId, "idle", { roomId: null });
+    }
 
     logEvent({
       eventType: "ws_connected",

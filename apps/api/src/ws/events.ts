@@ -36,6 +36,14 @@ import {
 import { blockUser } from "../services/block.js";
 import { logEvent } from "../lib/logger.js";
 import { touchOnline } from "../services/online.js";
+import {
+  evictEmptyMatchLooper,
+  hasEmptyMatchLimit,
+  hasRequeueCooldown,
+  isLiveConnection,
+  recordFinishedRoom,
+  sessionSentMessage,
+} from "../matchmaking/live-session.js";
 
 export async function handleClientEvent(
   ws: ServerWebSocket<WSContextData>,
@@ -221,9 +229,30 @@ async function runGeneralFallback(sessionId: string) {
 async function handleQueueJoin(
   ws: ServerWebSocket<WSContextData>,
   interests?: string[],
-  gender?: Gender
+  gender?: Gender,
+  options: { fromNext?: boolean } = {}
 ) {
   const { sessionId } = ws.data;
+  if (ws.readyState !== 1) return;
+
+  if (hasEmptyMatchLimit(sessionId)) {
+    evictEmptyMatchLooper(sessionId);
+    return;
+  }
+
+  if (!options.fromNext && hasRequeueCooldown(sessionId)) {
+    ws.send(
+      JSON.stringify({
+        type: "error",
+        data: {
+          code: "SKIP_COOLDOWN",
+          message: `Please wait ${RATE_LIMITS.SKIP_COOLDOWN_SECONDS}s before finding another match`,
+        },
+      })
+    );
+    return;
+  }
+
   if (gender) {
     ws.data.gender = gender;
   }
@@ -280,10 +309,12 @@ async function establishMatch(
 ) {
   const [u1, u2] = pair;
   const [s1, s2] = await Promise.all([getUserState(u1), getUserState(u2)]);
+  const bothLive = isLiveConnection(u1) && isLiveConnection(u2);
+  const bothQueued = s1.state === "queued" && s2.state === "queued";
 
-  if (s1.state !== "queued" || s2.state !== "queued") {
-    if (s1.state === "queued") await restoreQueuedSession(u1);
-    if (s2.state === "queued") await restoreQueuedSession(u2);
+  if (!bothLive || !bothQueued) {
+    if (s1.state === "queued" && isLiveConnection(u1)) await restoreQueuedSession(u1);
+    if (s2.state === "queued" && isLiveConnection(u2)) await restoreQueuedSession(u2);
     return;
   }
 
@@ -542,7 +573,7 @@ async function handleChatNext(ws: ServerWebSocket<WSContextData>) {
   ws.data.lastSkipTime = now;
 
   // Automatically requeue
-  await handleQueueJoin(ws, ws.data.interests);
+  await handleQueueJoin(ws, ws.data.interests, undefined, { fromNext: true });
 }
 
 async function handleChatStop(ws: ServerWebSocket<WSContextData>) {
@@ -623,6 +654,11 @@ export async function endCurrentRoom(
   );
 
   const partnerId = room.participants.find((p) => p !== initiatorSessionId);
+  recordFinishedRoom(initiatorSessionId, sessionSentMessage(initiatorSessionId, room));
+  if (partnerId) {
+    recordFinishedRoom(partnerId, sessionSentMessage(partnerId, room));
+  }
+
   if (partnerId) {
     await setUserState(partnerId, "idle", { roomId: null });
     const partnerWs = connectionManager.get(partnerId);
@@ -638,5 +674,12 @@ export async function endCurrentRoom(
   const initiatorWs = connectionManager.get(initiatorSessionId);
   if (initiatorWs) {
     initiatorWs.data.roomId = undefined;
+  }
+
+  if (hasEmptyMatchLimit(initiatorSessionId)) {
+    evictEmptyMatchLooper(initiatorSessionId);
+  }
+  if (partnerId && hasEmptyMatchLimit(partnerId)) {
+    evictEmptyMatchLooper(partnerId);
   }
 }

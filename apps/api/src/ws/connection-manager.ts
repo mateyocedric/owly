@@ -1,5 +1,5 @@
 import type { ServerWebSocket } from "bun";
-import type { Gender, ServerEvent } from "@owly/shared";
+import { WS_CLOSE, type Gender, type ServerEvent } from "@owly/shared";
 
 export interface WSContextData {
   sessionId: string;
@@ -14,6 +14,8 @@ export interface WSContextData {
   lastSkipTime?: number;
   lastReactionTime?: number;
   recentReactionTimes?: number[];
+  lastRoomEndedAt?: number;
+  emptyMatchStreak?: number;
 }
 
 class ConnectionManager {
@@ -23,8 +25,13 @@ class ConnectionManager {
     const existing = this.connections.get(sessionId);
     this.connections.set(sessionId, ws);
     if (existing && existing !== ws) {
-      existing.close(4000, "Replaced by newer connection");
+      existing.close(WS_CLOSE.REPLACED, "Replaced by newer connection");
     }
+  }
+
+  public isLive(sessionId: string): boolean {
+    const ws = this.connections.get(sessionId);
+    return !!ws && ws.readyState === 1;
   }
 
   /** Returns true when this socket was the active connection and the session went offline. */

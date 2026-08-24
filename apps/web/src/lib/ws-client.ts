@@ -2,7 +2,7 @@ import type { ClientEvent, ServerEvent } from "@owly/shared";
 import { websocketUrl } from "./config.js";
 
 type EventListener = (event: ServerEvent) => void;
-type CloseListener = () => void;
+type CloseListener = (code: number) => void;
 
 export class OwlyWSClient {
   private ws: WebSocket | null = null;
@@ -64,14 +64,14 @@ export class OwlyWSClient {
         reject(err);
       };
 
-      this.ws.onclose = () => {
+      this.ws.onclose = (event) => {
         this.stopHeartbeat();
         const shouldNotify = this.didOpen && !this.manualClose;
         this.didOpen = false;
         this.connectPromise = null;
         this.ws = null;
         if (shouldNotify) {
-          for (const listener of this.closeListeners) listener();
+          for (const listener of this.closeListeners) listener(event.code);
         }
       };
     });

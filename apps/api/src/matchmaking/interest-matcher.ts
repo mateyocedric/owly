@@ -4,6 +4,10 @@ import { ATOMIC_INTEREST_MATCH_SCRIPT } from "../lib/lua-scripts.js";
 import { isBlocked } from "../services/block.js";
 import { restoreQueuedSession } from "./matcher.js";
 import { normalizeInterest } from "./policy.js";
+import {
+  isLiveConnection,
+  markUnreachableOffline,
+} from "./live-session.js";
 
 export async function tryInterestMatch(
   currentSessionId: string,
@@ -42,6 +46,23 @@ export async function tryInterestMatch(
         restoreQueuedSession(partner),
       ]);
       continue;
+    }
+
+    if (!isLiveConnection(partner)) {
+      skipped.add(partner);
+      await Promise.all([
+        restoreQueuedSession(currentSessionId),
+        markUnreachableOffline(partner),
+      ]);
+      continue;
+    }
+
+    if (!isLiveConnection(currentSessionId)) {
+      await Promise.all([
+        restoreQueuedSession(partner),
+        markUnreachableOffline(currentSessionId),
+      ]);
+      return null;
     }
 
     return {

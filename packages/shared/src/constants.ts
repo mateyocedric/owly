@@ -65,6 +65,15 @@ export const MATCHMAKING = {
   RECONNECT_GRACE_SECONDS: 15,
   /** Max interests per session */
   MAX_INTERESTS: 5,
+  /** Close a socket after this many finished rooms with no messages sent */
+  EMPTY_MATCH_STREAK_LIMIT: 8,
+  /** Client-side cap on automatic requeues after a dropped connection */
+  MAX_AUTO_REQUEUES: 3,
+} as const;
+
+export const WS_CLOSE = {
+  REPLACED: 4000,
+  EMPTY_MATCH_LIMIT: 4001,
 } as const;
 
 export const SESSION = {
