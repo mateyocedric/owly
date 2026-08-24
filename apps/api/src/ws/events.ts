@@ -4,18 +4,23 @@ import {
   type ClientEvent,
   type ServerEvent,
   RATE_LIMITS,
+  REDIS_KEYS,
 } from "@owly/shared";
+import { env } from "../env.js";
 import { connectionManager, type WSContextData } from "./connection-manager.js";
+import { redis } from "../lib/redis.js";
 import {
   getUserState,
   setUserState,
 } from "../matchmaking/state-machine.js";
 import {
   addToQueue,
+  addToGeneralQueue,
   removeFromQueue,
   getQueuePosition,
 } from "../matchmaking/queue.js";
-import { tryAtomicMatch } from "../matchmaking/matcher.js";
+import { normalizeInterest } from "../matchmaking/policy.js";
+import { tryAtomicMatch, restoreQueuedSession } from "../matchmaking/matcher.js";
 import { tryInterestMatch } from "../matchmaking/interest-matcher.js";
 import {
   createChatRoom,
@@ -124,6 +129,60 @@ export async function handleClientEvent(
   }
 }
 
+const generalFallbackTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+export function clearGeneralFallbackTimer(sessionId: string) {
+  const timer = generalFallbackTimers.get(sessionId);
+  if (timer) {
+    clearTimeout(timer);
+    generalFallbackTimers.delete(sessionId);
+  }
+}
+
+function scheduleGeneralFallback(sessionId: string) {
+  clearGeneralFallbackTimer(sessionId);
+  const delayMs = env.MATCHMAKING_INTEREST_TIMEOUT_SECONDS * 1000;
+  const timer = setTimeout(() => {
+    generalFallbackTimers.delete(sessionId);
+    void runGeneralFallback(sessionId);
+  }, delayMs);
+  generalFallbackTimers.set(sessionId, timer);
+}
+
+async function isStillQueued(sessionId: string): Promise<boolean> {
+  if (!connectionManager.has(sessionId)) return false;
+  const state = await getUserState(sessionId);
+  return state.state === "queued";
+}
+
+async function runGeneralFallback(sessionId: string) {
+  if (!(await isStillQueued(sessionId))) return;
+
+  const interests = connectionManager.get(sessionId)?.data.interests ?? [];
+
+  if (interests.length > 0) {
+    const interestMatch = await tryInterestMatch(sessionId, interests);
+    if (interestMatch) {
+      await establishMatch(interestMatch.pair, interestMatch.commonInterests);
+      return;
+    }
+  }
+
+  if (!(await isStillQueued(sessionId))) return;
+
+  await addToGeneralQueue(sessionId);
+
+  if (!(await isStillQueued(sessionId))) {
+    await redis.zrem(REDIS_KEYS.QUEUE_GENERAL, sessionId);
+    return;
+  }
+
+  const generalMatch = await tryAtomicMatch(sessionId);
+  if (generalMatch) {
+    await establishMatch(generalMatch);
+  }
+}
+
 async function handleQueueJoin(
   ws: ServerWebSocket<WSContextData>,
   interests?: string[]
@@ -143,26 +202,34 @@ async function handleQueueJoin(
     await endCurrentRoom(ws.data.roomId, sessionId, "next");
   }
 
-  ws.data.interests = interests || [];
+  clearGeneralFallbackTimer(sessionId);
+  ws.data.interests = (interests || []).map(normalizeInterest).filter(Boolean);
   await setUserState(sessionId, "queued", { queuedAt: Date.now() });
-  await addToQueue(sessionId, ws.data.interests);
+
+  const hasInterests = ws.data.interests.length > 0;
+  await addToQueue(sessionId, ws.data.interests, { general: !hasInterests });
 
   const pos = await getQueuePosition(sessionId);
-  ws.send(JSON.stringify({ type: "queue.waiting", data: { position: pos } }));
+  ws.send(
+    JSON.stringify({
+      type: "queue.waiting",
+      data: { position: pos || 1 },
+    })
+  );
 
   logEvent({ eventType: "queue_join", sessionId, details: { interests } });
 
-  // 1. Try interest-based match first if interests provided
-  if (ws.data.interests.length > 0) {
+  if (hasInterests) {
     const interestMatch = await tryInterestMatch(sessionId, ws.data.interests);
     if (interestMatch) {
       await establishMatch(interestMatch.pair, interestMatch.commonInterests);
       return;
     }
+    scheduleGeneralFallback(sessionId);
+    return;
   }
 
-  // 2. Try atomic general match
-  const generalMatch = await tryAtomicMatch();
+  const generalMatch = await tryAtomicMatch(sessionId);
   if (generalMatch) {
     await establishMatch(generalMatch);
   }
@@ -173,6 +240,16 @@ async function establishMatch(
   commonInterests?: string[]
 ) {
   const [u1, u2] = pair;
+  const [s1, s2] = await Promise.all([getUserState(u1), getUserState(u2)]);
+
+  if (s1.state !== "queued" || s2.state !== "queued") {
+    if (s1.state === "queued") await restoreQueuedSession(u1);
+    if (s2.state === "queued") await restoreQueuedSession(u2);
+    return;
+  }
+
+  clearGeneralFallbackTimer(u1);
+  clearGeneralFallbackTimer(u2);
 
   // Clean up queues for both users
   await removeFromQueue(u1);
@@ -233,6 +310,7 @@ async function relayToPartner(
 
 async function handleQueueLeave(ws: ServerWebSocket<WSContextData>) {
   const { sessionId } = ws.data;
+  clearGeneralFallbackTimer(sessionId);
   await removeFromQueue(sessionId, ws.data.interests);
   await setUserState(sessionId, "idle", { roomId: null });
   ws.send(JSON.stringify({ type: "chat.ended", data: { reason: "stop" } }));
@@ -385,6 +463,7 @@ async function handleChatStop(ws: ServerWebSocket<WSContextData>) {
   if (roomId) {
     await endCurrentRoom(roomId, sessionId, "stop");
   }
+  clearGeneralFallbackTimer(sessionId);
   await removeFromQueue(sessionId, ws.data.interests);
   await setUserState(sessionId, "idle", { roomId: null });
   ws.send(JSON.stringify({ type: "chat.ended", data: { reason: "stop" } }));

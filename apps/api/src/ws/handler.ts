@@ -1,6 +1,6 @@
 import type { ServerWebSocket, WebSocketHandler } from "bun";
 import { connectionManager, type WSContextData } from "./connection-manager.js";
-import { handleClientEvent, endCurrentRoom } from "./events.js";
+import { handleClientEvent, endCurrentRoom, clearGeneralFallbackTimer } from "./events.js";
 import { validateSessionToken } from "../services/session.js";
 import {
   getUserState,
@@ -30,6 +30,7 @@ export const websocketHandler: WebSocketHandler<WSContextData> = {
   async close(ws: ServerWebSocket<WSContextData>, code: number, reason: string) {
     const { sessionId, roomId, interests } = ws.data;
     connectionManager.unregister(sessionId);
+    clearGeneralFallbackTimer(sessionId);
 
     // Remove from matchmaking queues
     await removeFromQueue(sessionId, interests);

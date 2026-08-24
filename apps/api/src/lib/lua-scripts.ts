@@ -1,48 +1,98 @@
 /**
  * Redis Lua script for atomic 2-user matchmaking.
- * 
- * Pops 2 users from the general queue atomically.
- * Returns [user1, user2] or nil.
+ *
+ * Pairs the current user with the oldest other member of the general queue,
+ * then removes both from general and all tracked interest queues.
+ * Returns [currentUser, partner] or nil.
  */
 export const ATOMIC_MATCH_SCRIPT = `
-local queue = KEYS[1]
-local count = redis.call('ZCARD', queue)
+local generalQueue = KEYS[1]
+local currentUserId = ARGV[1]
+local interestPrefix = ARGV[2]
+local sessionPrefix = ARGV[3]
 
-if count >= 2 then
-    local matched = redis.call('ZRANGE', queue, 0, 1)
-    redis.call('ZREM', queue, matched[1], matched[2])
-    return matched
-else
+local score = redis.call('ZSCORE', generalQueue, currentUserId)
+if not score then
     return nil
 end
-`;
 
-/**
- * Redis Lua script for interest matching.
- * Checks if another user is in the given interest queue.
- * If found, removes both from the interest queue and all other queues.
- */
-export const ATOMIC_INTEREST_MATCH_SCRIPT = `
-local interestQueue = KEYS[1]
-local generalQueue = KEYS[2]
-local currentUserId = ARGV[1]
+local excluded = {}
+for i = 4, #ARGV do
+    excluded[ARGV[i]] = true
+end
 
--- Find partner in interest queue (excluding self)
-local members = redis.call('ZRANGE', interestQueue, 0, 10)
+local members = redis.call('ZRANGE', generalQueue, 0, 99)
 local partnerId = nil
 
 for i, member in ipairs(members) do
-    if member ~= currentUserId then
+    if member ~= currentUserId and not excluded[member] then
         partnerId = member
         break
     end
 end
 
-if partnerId ~= nil then
-    redis.call('ZREM', interestQueue, currentUserId, partnerId)
-    redis.call('ZREM', generalQueue, currentUserId, partnerId)
-    return {currentUserId, partnerId}
-else
+if partnerId == nil then
     return nil
 end
+
+local function clearUser(id)
+    local setKey = sessionPrefix .. id
+    local slugs = redis.call('SMEMBERS', setKey)
+    for _, slug in ipairs(slugs) do
+        redis.call('ZREM', interestPrefix .. slug, id)
+    end
+    redis.call('ZREM', generalQueue, id)
+    redis.call('DEL', setKey)
+end
+
+clearUser(currentUserId)
+clearUser(partnerId)
+return {currentUserId, partnerId}
+`;
+
+/**
+ * Redis Lua script for interest matching.
+ * Finds another user in the given interest queue (excluding self and skipped ids),
+ * then removes both from every tracked queue.
+ */
+export const ATOMIC_INTEREST_MATCH_SCRIPT = `
+local interestQueue = KEYS[1]
+local generalQueue = KEYS[2]
+local currentUserId = ARGV[1]
+local interestPrefix = ARGV[2]
+local sessionPrefix = ARGV[3]
+
+local excluded = {}
+for i = 4, #ARGV do
+    excluded[ARGV[i]] = true
+end
+
+local members = redis.call('ZRANGE', interestQueue, 0, 99)
+local partnerId = nil
+
+for i, member in ipairs(members) do
+    if member ~= currentUserId and not excluded[member] then
+        partnerId = member
+        break
+    end
+end
+
+if partnerId == nil then
+    return nil
+end
+
+local function clearUser(id)
+    local setKey = sessionPrefix .. id
+    local slugs = redis.call('SMEMBERS', setKey)
+    for _, slug in ipairs(slugs) do
+        redis.call('ZREM', interestPrefix .. slug, id)
+    end
+    redis.call('ZREM', interestQueue, id)
+    redis.call('ZREM', generalQueue, id)
+    redis.call('DEL', setKey)
+end
+
+clearUser(currentUserId)
+clearUser(partnerId)
+return {currentUserId, partnerId}
 `;

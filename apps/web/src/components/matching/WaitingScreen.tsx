@@ -27,10 +27,9 @@ export function WaitingScreen({
           <span className="sx-loading-dots" aria-hidden="true" />
         </h3>
         <p className="sx-caption">
-          Looking for active users online.
           {interests.length > 0
-            ? " Prioritizing people who share your topics."
-            : " Matching randomly."}
+            ? "Looking for someone who shares your topics. If no one matches, you'll be paired randomly in a few seconds."
+            : "Looking for active users online. Matching randomly."}
         </p>
       </div>
 

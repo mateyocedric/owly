@@ -1,9 +1,13 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import {
   clientEventSchema,
   serverEventSchema,
-  RATE_LIMITS,
+  MATCHMAKING,
 } from "@owly/shared";
+import {
+  normalizeInterest,
+  shouldJoinGeneralQueue,
+} from "../matchmaking/policy.js";
 
 describe("WebSocket Event Contracts", () => {
   it("validates client queue.join event with valid interests", () => {
@@ -66,5 +70,35 @@ describe("WebSocket Event Contracts", () => {
 
     const parsed = serverEventSchema.safeParse(event);
     expect(parsed.success).toBe(true);
+  });
+});
+
+describe("Interest queue policy", () => {
+  it("normalizes interest slugs", () => {
+    expect(normalizeInterest("  Gaming ")).toBe("gaming");
+    expect(normalizeInterest("")).toBe("");
+  });
+
+  it("sends users without topics to the general queue immediately", () => {
+    expect(shouldJoinGeneralQueue([], Date.now(), MATCHMAKING.INTEREST_TIMEOUT_SECONDS)).toBe(
+      true
+    );
+  });
+
+  it("keeps topic-queued users out of the general queue until the timeout", () => {
+    const queuedAt = 1_000;
+    const timeout = MATCHMAKING.INTEREST_TIMEOUT_SECONDS;
+
+    expect(
+      shouldJoinGeneralQueue(["music"], queuedAt, timeout, queuedAt + 5_000)
+    ).toBe(false);
+    expect(
+      shouldJoinGeneralQueue(
+        ["music"],
+        queuedAt,
+        timeout,
+        queuedAt + timeout * 1000
+      )
+    ).toBe(true);
   });
 });

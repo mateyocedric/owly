@@ -53,6 +53,8 @@ export const REDIS_KEYS = {
   QUEUE_GENERAL: "owly:queue:general",
   /** Interest-specific queue prefix */
   QUEUE_INTEREST: "owly:queue:interest:",
+  /** Set of interest slugs a queued session currently occupies */
+  QUEUE_SESSION_INTERESTS: "owly:queue:session-interests:",
   /** Session state hash prefix */
   SESSION_STATE: "owly:session:",
   /** Room ephemeral data prefix */
