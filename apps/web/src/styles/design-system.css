@@ -223,7 +223,7 @@
 .sx-admin-section {
   display: flex;
   flex-direction: column;
-  gap: var(--sx-space-md);
+  gap: var(--sx-space-lg);
 }
 
 .sx-admin-section-title {

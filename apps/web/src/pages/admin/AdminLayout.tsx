@@ -76,7 +76,7 @@ export function AdminLayout() {
         ))}
       </div>
 
-      <DarkSurface className="space-y-6">
+      <DarkSurface className="w-full min-w-0 space-y-6">
         <Outlet />
       </DarkSurface>
     </PageContainer>

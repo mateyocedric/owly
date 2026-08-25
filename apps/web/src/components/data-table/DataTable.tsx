@@ -26,7 +26,7 @@ export function DataTable<T>({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-[var(--sx-rounded-sm)] border border-[var(--sx-hairline-on-dark)] bg-[var(--sx-canvas-night)]",
+        "w-full min-w-0 overflow-hidden rounded-[var(--sx-rounded-sm)] border border-[var(--sx-hairline-on-dark)] bg-[var(--sx-canvas-night)]",
         className
       )}
     >

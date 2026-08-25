@@ -15,7 +15,7 @@ export function PageContainer({
 }) {
   const max = wide ? "max-w-6xl" : narrow ? "max-w-xl" : "max-w-3xl";
   return (
-    <div className={`mx-auto ${max} px-4 py-12 sm:px-6 ${className}`}>{children}</div>
+    <div className={`mx-auto w-full min-w-0 ${max} px-4 py-12 sm:px-6 ${className}`}>{children}</div>
   );
 }
 
@@ -49,22 +49,11 @@ export function DarkSurface({
   return <div className={`sx-dark-surface space-y-4 ${className}`}>{children}</div>;
 }
 
-export function SurfaceCard({
-  children,
-  className = "",
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return <div className={`sx-surface-card ${className}`}>{children}</div>;
-}
-
 export function AdminSection({
   title,
   description,
   children,
   className = "",
-  contentClassName = "",
 }: {
   title?: string;
   description?: string;
@@ -82,7 +71,7 @@ export function AdminSection({
           ) : null}
         </div>
       ) : null}
-      <SurfaceCard className={contentClassName}>{children}</SurfaceCard>
+      {children}
     </section>
   );
 }
