@@ -47,12 +47,33 @@ export const adminLoginRequestSchema = z.object({
 
 export type AdminLoginRequest = z.infer<typeof adminLoginRequestSchema>;
 
+export const adminSessionUserSchema = z.object({
+  id: z.string(),
+  username: z.string(),
+  role: z.enum(["moderator", "admin", "super_admin"]),
+});
+
+export type AdminSessionUser = z.infer<typeof adminSessionUserSchema>;
+
 export const adminLoginResponseSchema = z.object({
   token: z.string(),
   expiresAt: z.string().datetime(),
+  user: adminSessionUserSchema,
 });
 
 export type AdminLoginResponse = z.infer<typeof adminLoginResponseSchema>;
+
+export const adminSessionResponseSchema = z.discriminatedUnion("status", [
+  z.object({
+    status: z.literal("authenticated"),
+    user: adminSessionUserSchema,
+  }),
+  z.object({
+    status: z.literal("unauthenticated"),
+  }),
+]);
+
+export type AdminSessionResponse = z.infer<typeof adminSessionResponseSchema>;
 
 export const updateReportStatusSchema = z.object({
   status: z.enum(["reviewing", "resolved", "dismissed"]),
@@ -74,6 +95,45 @@ export const moderateUserSchema = z.object({
 });
 
 export type ModerateUser = z.infer<typeof moderateUserSchema>;
+
+function coercePositiveInt(value: unknown, fallback: number, max?: number): number {
+  const raw =
+    typeof value === "number"
+      ? value
+      : parseInt(String(value ?? ""), 10);
+  if (!Number.isFinite(raw) || raw < 1) return fallback;
+  return max ? Math.min(raw, max) : raw;
+}
+
+export const adminListQuerySchema = z.object({
+  page: z.unknown().transform((v) => coercePositiveInt(v, 1)),
+  limit: z.unknown().transform((v) => coercePositiveInt(v, 25, 100)),
+});
+
+export type AdminListQuery = z.infer<typeof adminListQuerySchema>;
+
+export const adminReportsListQuerySchema = adminListQuerySchema.extend({
+  status: z
+    .unknown()
+    .transform((v) => {
+      const s = typeof v === "string" && v.length > 0 ? v : "pending";
+      return s;
+    }),
+});
+
+export type AdminReportsListQuery = z.infer<typeof adminReportsListQuerySchema>;
+
+export const adminUsersListQuerySchema = adminListQuerySchema.extend({
+  status: z
+    .unknown()
+    .optional()
+    .transform((v) => {
+      if (typeof v !== "string" || v.length === 0) return undefined;
+      return v;
+    }),
+});
+
+export type AdminUsersListQuery = z.infer<typeof adminUsersListQuerySchema>;
 
 // ─── Health ──────────────────────────────────────────────────────────────────
 

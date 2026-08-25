@@ -39,6 +39,54 @@ export function LightSurface({
   return <div className={`sx-light-surface space-y-4 ${className}`}>{children}</div>;
 }
 
+export function DarkSurface({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return <div className={`sx-dark-surface space-y-4 ${className}`}>{children}</div>;
+}
+
+export function SurfaceCard({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return <div className={`sx-surface-card ${className}`}>{children}</div>;
+}
+
+export function AdminSection({
+  title,
+  description,
+  children,
+  className = "",
+  contentClassName = "",
+}: {
+  title?: string;
+  description?: string;
+  children: React.ReactNode;
+  className?: string;
+  contentClassName?: string;
+}) {
+  return (
+    <section className={`sx-admin-section ${className}`}>
+      {title || description ? (
+        <div className="space-y-1">
+          {title ? <h3 className="sx-admin-section-title">{title}</h3> : null}
+          {description ? (
+            <p className="sx-admin-section-description">{description}</p>
+          ) : null}
+        </div>
+      ) : null}
+      <SurfaceCard className={contentClassName}>{children}</SurfaceCard>
+    </section>
+  );
+}
+
 export function PageHeader({
   eyebrow,
   title,

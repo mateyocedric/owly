@@ -1,19 +1,34 @@
 import { Hono } from "hono";
 import { AnonymousSession, BanRecord } from "@owly/database";
-import { moderateUserSchema } from "@owly/shared";
+import { adminUsersListQuerySchema, moderateUserSchema } from "@owly/shared";
 import { applyModerationAction } from "../../services/moderation.js";
 import { createAuditLog } from "../../services/audit.js";
 import mongoose from "mongoose";
 
 export const adminUsersRouter = new Hono();
 
-// List sessions with status filter
+// List sessions with status filter + pagination
 adminUsersRouter.get("/", async (c) => {
-  const status = c.req.query("status");
+  const parsed = adminUsersListQuerySchema.safeParse({
+    page: c.req.query("page"),
+    limit: c.req.query("limit"),
+    status: c.req.query("status") || undefined,
+  });
+  if (!parsed.success) {
+    return c.json({ error: "Invalid list query" }, 400);
+  }
+
+  const { page, limit, status } = parsed.data;
   const query = status ? { status } : {};
-  const sessions = await AnonymousSession.find(query)
-    .sort({ createdAt: -1 })
-    .limit(50);
+  const skip = (page - 1) * limit;
+
+  const [sessions, total] = await Promise.all([
+    AnonymousSession.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit),
+    AnonymousSession.countDocuments(query),
+  ]);
 
   return c.json({
     sessions: sessions.map((s) => ({
@@ -26,6 +41,9 @@ adminUsersRouter.get("/", async (c) => {
       lastActiveAt: s.lastActiveAt.toISOString(),
       expiresAt: s.expiresAt.toISOString(),
     })),
+    total,
+    page,
+    limit,
   });
 });
 

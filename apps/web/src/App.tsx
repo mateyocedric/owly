@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { Routes, Route, useLocation } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { TooltipProvider, Toaster } from "@owly/ui";
 import { Header } from "./components/layout/Header.js";
 import { Footer } from "./components/layout/Footer.js";
@@ -7,7 +7,11 @@ import { LandingPage } from "./pages/Landing.js";
 import { AgeGatePage } from "./pages/AgeGate.js";
 import { InterestSelectPage } from "./pages/InterestSelect.js";
 import { ChatPage } from "./pages/Chat.js";
-import { AdminPage } from "./pages/Admin.js";
+import { AdminLayout } from "./pages/admin/index.js";
+import { AdminMetricsPage } from "./pages/admin/metrics/index.js";
+import { AdminReportsPage } from "./pages/admin/reports/index.js";
+import { AdminUsersPage } from "./pages/admin/users/index.js";
+import { AdminWordsPage } from "./pages/admin/words/index.js";
 import { SettingsPage } from "./pages/Settings.js";
 import { PrivacyPage } from "./pages/Privacy.js";
 import { TermsPage } from "./pages/Terms.js";
@@ -33,7 +37,13 @@ function AppRoutes() {
           <Route path="/age-gate" element={<AgeGatePage />} />
           <Route path="/interests" element={<InterestSelectPage />} />
           <Route path="/chat" element={<ChatPage />} />
-          <Route path="/admin" element={<AdminPage />} />
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<Navigate to="metrics" replace />} />
+            <Route path="metrics" element={<AdminMetricsPage />} />
+            <Route path="reports" element={<AdminReportsPage />} />
+            <Route path="users" element={<AdminUsersPage />} />
+            <Route path="words" element={<AdminWordsPage />} />
+          </Route>
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/terms" element={<TermsPage />} />

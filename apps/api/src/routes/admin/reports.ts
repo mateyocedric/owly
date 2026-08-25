@@ -1,20 +1,36 @@
 import { Hono } from "hono";
 import { ModerationReport } from "@owly/database";
-import { updateReportStatusSchema } from "@owly/shared";
+import {
+  adminReportsListQuerySchema,
+  updateReportStatusSchema,
+} from "@owly/shared";
 import { createAuditLog } from "../../services/audit.js";
 import mongoose from "mongoose";
 
 export const adminReportsRouter = new Hono();
 
-// List reports with filters
+// List reports with filters + pagination
 adminReportsRouter.get("/", async (c) => {
-  const status = c.req.query("status") || "pending";
-  const limit = Math.min(parseInt(c.req.query("limit") || "50"), 100);
+  const parsed = adminReportsListQuerySchema.safeParse({
+    page: c.req.query("page"),
+    limit: c.req.query("limit"),
+    status: c.req.query("status"),
+  });
+  if (!parsed.success) {
+    return c.json({ error: "Invalid list query" }, 400);
+  }
 
+  const { page, limit, status } = parsed.data;
   const query = status === "all" ? {} : { status };
-  const reports = await ModerationReport.find(query)
-    .sort({ createdAt: -1 })
-    .limit(limit);
+  const skip = (page - 1) * limit;
+
+  const [reports, total] = await Promise.all([
+    ModerationReport.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit),
+    ModerationReport.countDocuments(query),
+  ]);
 
   return c.json({
     reports: reports.map((r) => ({
@@ -29,6 +45,9 @@ adminReportsRouter.get("/", async (c) => {
       createdAt: r.createdAt.toISOString(),
       resolvedAt: r.resolvedAt?.toISOString(),
     })),
+    total,
+    page,
+    limit,
   });
 });
 

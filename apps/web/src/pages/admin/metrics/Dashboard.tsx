@@ -2,14 +2,16 @@ import React from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@owly/ui";
 import { Users, MessageSquare, AlertTriangle, ShieldCheck } from "lucide-react";
 
+export interface AdminMetricsData {
+  totalSessions: number;
+  activeSessions: number;
+  totalRooms: number;
+  pendingReports: number;
+  totalBans: number;
+}
+
 interface DashboardProps {
-  metrics: {
-    totalSessions: number;
-    activeSessions: number;
-    totalRooms: number;
-    pendingReports: number;
-    totalBans: number;
-  };
+  metrics: AdminMetricsData;
 }
 
 export function AdminDashboardMetrics({ metrics }: DashboardProps) {
@@ -45,7 +47,10 @@ export function AdminDashboardMetrics({ metrics }: DashboardProps) {
       {cards.map((card) => {
         const Icon = card.icon;
         return (
-          <Card key={card.title}>
+          <Card
+            key={card.title}
+            className="border-[var(--sx-hairline-on-dark)] bg-[var(--sx-canvas-night)] shadow-none"
+          >
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 {card.title}
@@ -53,7 +58,7 @@ export function AdminDashboardMetrics({ metrics }: DashboardProps) {
               <Icon className="size-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{card.value}</div>
+              <div className="text-2xl font-bold text-foreground">{card.value}</div>
               <p className="mt-1 text-xs text-muted-foreground">{card.sub}</p>
             </CardContent>
           </Card>

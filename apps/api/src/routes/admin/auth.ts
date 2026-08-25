@@ -3,8 +3,25 @@ import * as jose from "jose";
 import { AdminUser } from "@owly/database";
 import { adminLoginRequestSchema } from "@owly/shared";
 import { env } from "../../env.js";
+import { adminAuthMiddleware } from "../../middleware/admin-auth.js";
 
 export const adminAuthRouter = new Hono();
+
+adminAuthRouter.get("/session", adminAuthMiddleware, (c) => {
+  const admin = c.get("adminUser");
+  if (!admin) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+
+  return c.json({
+    status: "authenticated",
+    user: {
+      id: admin.userId,
+      username: admin.username,
+      role: admin.role,
+    },
+  });
+});
 
 adminAuthRouter.post("/login", async (c) => {
   const body = await c.req.json();

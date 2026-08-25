@@ -12,6 +12,7 @@
   "dependencies": {
     "@owly/shared": "workspace:*",
     "@owly/ui": "workspace:*",
+    "@tanstack/react-query": "^5.102.2",
     "lucide-react": "^0.468.0",
     "nanoid": "^5.0.9",
     "react": "^19.0.0",
