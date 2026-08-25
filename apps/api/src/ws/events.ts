@@ -28,6 +28,7 @@ import {
   getRoomCache,
   appendMessageToRoomCache,
   closeChatRoom,
+  claimRoomEnd,
 } from "../services/room.js";
 import {
   checkContentModeration,
@@ -645,8 +646,9 @@ export async function endCurrentRoom(
   initiatorSessionId: string,
   reason: "next" | "stop" | "disconnect" | "report" | "moderation"
 ) {
-  const room = await getRoomCache(roomId);
-  if (!room) return;
+  const claimed = await claimRoomEnd(roomId);
+  const room = claimed ? await getRoomCache(roomId) : null;
+  if (!claimed || !room) return;
 
   await closeChatRoom(
     roomId,

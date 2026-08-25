@@ -110,3 +110,15 @@ export async function closeChatRoom(
     );
   }
 }
+
+/** First caller wins so a room notifies the partner only once. */
+export async function claimRoomEnd(roomId: string): Promise<boolean> {
+  const result = await redis.set(
+    `${REDIS_KEYS.ROOM_DATA}${roomId}:ended`,
+    "1",
+    "EX",
+    300,
+    "NX"
+  );
+  return result === "OK";
+}
