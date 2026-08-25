@@ -22,9 +22,9 @@ export const websocketHandler: WebSocketHandler<WSContextData> = {
       await setUserState(ws.data.sessionId, "queued", {
         queuedAt: existing.queuedAt,
       });
-    } else {
-      await setUserState(ws.data.sessionId, "idle", { roomId: null });
     }
+    // Do not write idle here: queue.join can run while open() is still awaiting
+    // and a late idle write would leave the session in Redis queues as idle.
 
     logEvent({
       eventType: "ws_connected",

@@ -311,11 +311,13 @@ async function establishMatch(
   const [u1, u2] = pair;
   const [s1, s2] = await Promise.all([getUserState(u1), getUserState(u2)]);
   const bothLive = isLiveConnection(u1) && isLiveConnection(u2);
-  const bothQueued = s1.state === "queued" && s2.state === "queued";
+  const s1Matched = s1.state === "matched";
+  const s2Matched = s2.state === "matched";
+  const proceed = bothLive && !s1Matched && !s2Matched;
 
-  if (!bothLive || !bothQueued) {
-    if (s1.state === "queued" && isLiveConnection(u1)) await restoreQueuedSession(u1);
-    if (s2.state === "queued" && isLiveConnection(u2)) await restoreQueuedSession(u2);
+  if (!proceed) {
+    if (isLiveConnection(u1) && !s1Matched) await restoreQueuedSession(u1);
+    if (isLiveConnection(u2) && !s2Matched) await restoreQueuedSession(u2);
     return;
   }
 
