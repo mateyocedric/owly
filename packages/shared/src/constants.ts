@@ -71,6 +71,18 @@ export const MATCHMAKING = {
   MAX_AUTO_REQUEUES: 3,
 } as const;
 
+/** Local-camera face presence during an active video session */
+export const FACE_PRESENCE = {
+  /** Seconds without a visible face before the session ends */
+  ABSENCE_TIMEOUT_SECONDS: 10,
+  /** How often to run face detection while the session is active */
+  DETECTION_INTERVAL_MS: 400,
+  /** Consecutive misses required before starting the grace-period warning */
+  MISS_STREAK_BEFORE_WARNING: 2,
+  /** Ignore detection results for this long after enabling (black frames) */
+  WARMUP_MS: 1000,
+} as const;
+
 export const WS_CLOSE = {
   REPLACED: 4000,
   EMPTY_MATCH_LIMIT: 4001,

@@ -1,5 +1,5 @@
 import React, { memo, useCallback, useEffect, useRef, useState } from "react";
-import { Mic, MicOff, Video, VideoOff, Loader2 } from "lucide-react";
+import { Mic, MicOff, VideoOff, Loader2 } from "lucide-react";
 import { GENDER_LABELS, type ChatReactionId, type Gender } from "@owly/shared";
 import type { VideoStatus } from "../../hooks/useWebRTC.js";
 import { ViewSwitcher, type VideoPrimaryView } from "./ViewSwitcher.js";
@@ -31,7 +31,6 @@ interface VideoPanelProps {
   partnerCameraOn: boolean;
   partnerMicOn: boolean;
   partnerMediaAvailable?: boolean;
-  onToggleCamera: () => void;
   onToggleMic: () => void;
   localGender?: Gender | null;
   partnerGender?: Gender | null;
@@ -114,7 +113,6 @@ export const VideoPanel = memo(function VideoPanel({
   partnerCameraOn,
   partnerMicOn,
   partnerMediaAvailable = true,
-  onToggleCamera,
   onToggleMic,
   localGender = null,
   partnerGender = null,
@@ -230,15 +228,6 @@ export const VideoPanel = memo(function VideoPanel({
           aria-label={micOn ? "Mute microphone" : "Unmute microphone"}
         >
           {micOn ? <Mic className="size-4" /> : <MicOff className="size-4" />}
-        </button>
-        <button
-          type="button"
-          className={mediaToggleClass}
-          onClick={onToggleCamera}
-          disabled={!localStream}
-          aria-label={cameraOn ? "Turn camera off" : "Turn camera on"}
-        >
-          {cameraOn ? <Video className="size-4" /> : <VideoOff className="size-4" />}
         </button>
         {onSendReaction ? (
           <ReactionBar

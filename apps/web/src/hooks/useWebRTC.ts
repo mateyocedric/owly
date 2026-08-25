@@ -481,14 +481,19 @@ export function useWebRTC({
           setMicOn(false);
           cameraOnRef.current = false;
           micOnRef.current = false;
-          await startPeer(null);
+          // Camera is required — do not start a recvonly peer without local media.
           return;
         }
       }
 
-      if (!stream && statusRef.current !== "permission_denied" && statusRef.current !== "error") {
-        // Previously denied via ensureLocalMedia; keep that status.
-        updateStatus("permission_denied");
+      if (!stream) {
+        if (
+          statusRef.current !== "permission_denied" &&
+          statusRef.current !== "error"
+        ) {
+          updateStatus("permission_denied");
+        }
+        return;
       }
 
       await startPeer(stream);
@@ -510,20 +515,6 @@ export function useWebRTC({
     armConnectingTimer,
     clearConnectingTimer,
   ]);
-
-  const toggleCamera = useCallback(() => {
-    const stream = localStreamRef.current;
-    if (!stream) return;
-    const next = !cameraOn;
-    for (const track of stream.getVideoTracks()) {
-      track.enabled = next;
-    }
-    setCameraOn(next);
-    sendRef.current({
-      type: "video.state",
-      data: { cameraOn: next, micOn, available: true },
-    });
-  }, [cameraOn, micOn]);
 
   const toggleMic = useCallback(() => {
     const stream = localStreamRef.current;
@@ -548,7 +539,6 @@ export function useWebRTC({
     partnerCameraOn,
     partnerMicOn,
     partnerMediaAvailable,
-    toggleCamera,
     toggleMic,
     ensureLocalMedia,
     releaseLocalMedia,

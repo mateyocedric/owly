@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import { CHAT_REACTION_BY_ID, MATCHMAKING, RATE_LIMITS, WS_CLOSE } from "@owly/shared";
 import type { ChatReactionId, ClientEvent } from "@owly/shared";
+import { toast } from "sonner";
 import { useAppStore } from "../lib/store.js";
 import { OwlyWSClient } from "../lib/ws-client.js";
 import { apiFetch } from "../lib/api.js";
@@ -9,6 +10,7 @@ import {
   useWebRTC,
   type WebrtcInboundHandlers,
 } from "./useWebRTC.js";
+import { useFacePresence } from "./useFacePresence.js";
 import type { ReactionBurst } from "../components/chat/ReactionBurstOverlay.js";
 
 function createReactionBurst(
@@ -84,8 +86,18 @@ export function useChat() {
 
   const ensureLocalMediaRef = useRef(video.ensureLocalMedia);
   const releaseLocalMediaRef = useRef(video.releaseLocalMedia);
+  const stopChatRef = useRef<() => void>(() => {});
   ensureLocalMediaRef.current = video.ensureLocalMedia;
   releaseLocalMediaRef.current = video.releaseLocalMedia;
+
+  const facePresence = useFacePresence({
+    enabled: store.connectionState === "connected" && !!store.roomId,
+    stream: video.localStream,
+    onTimeout: () => {
+      toast.error("Session ended because no face was detected.");
+      stopChatRef.current();
+    },
+  });
 
   const clearAutoQueueTimer = useCallback(() => {
     if (autoQueueTimerRef.current) {
@@ -415,7 +427,15 @@ export function useChat() {
         clearAutoQueueTimer();
         clearReconnectSoon();
         // Request camera/mic on the user gesture before any network await.
-        await ensureLocalMediaRef.current();
+        const media = await ensureLocalMediaRef.current();
+        if (!media) {
+          joiningRef.current = false;
+          store.setConnectionState(
+            "error",
+            "Camera access is required to start a chat."
+          );
+          return;
+        }
         store.setConnectionState("finding");
         const client = await initWS();
         if (!client) {
@@ -537,6 +557,8 @@ export function useChat() {
     releaseLocalMediaRef.current();
   }, [store, clearAutoQueueTimer, clearReconnectSoon, clearSendCooldown]);
 
+  stopChatRef.current = stopChat;
+
   const blockPartner = useCallback(() => {
     if (!wsClientRef.current) return;
     clearAutoQueueTimer();
@@ -614,7 +636,8 @@ export function useChat() {
     partnerCameraOn: video.partnerCameraOn,
     partnerMicOn: video.partnerMicOn,
     partnerMediaAvailable: video.partnerMediaAvailable,
-    toggleCamera: video.toggleCamera,
     toggleMic: video.toggleMic,
+    facePresenceWarning: facePresence.warning,
+    facePresenceSecondsLeft: facePresence.secondsLeft,
   };
 }

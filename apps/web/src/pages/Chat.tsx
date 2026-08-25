@@ -55,8 +55,9 @@ export function ChatPage() {
     partnerCameraOn,
     partnerMicOn,
     partnerMediaAvailable,
-    toggleCamera,
     toggleMic,
+    facePresenceWarning,
+    facePresenceSecondsLeft,
   } = useChat();
 
   const onlineCount = useOnlineCount();
@@ -197,7 +198,6 @@ export function ChatPage() {
                   partnerMediaAvailable={partnerMediaAvailable}
                   localGender={gender}
                   partnerGender={partnerGender}
-                  onToggleCamera={toggleCamera}
                   onToggleMic={toggleMic}
                   remoteEmptyLabel={isPartnerLeft ? "Partner disconnected" : undefined}
                   reactionsEnabled={isConnected}
@@ -205,6 +205,18 @@ export function ChatPage() {
                   onSendReaction={sendReaction}
                   onReactionBurstEnd={removeReactionBurst}
                 />
+                {isConnected && facePresenceWarning ? (
+                  <div className="pointer-events-none absolute inset-0 z-[15] flex items-center justify-center bg-black/40 pb-[45%] lg:pb-0">
+                    <div className="mx-4 max-w-sm rounded-sm border border-white/20 bg-black/70 px-4 py-3 text-center backdrop-blur-sm">
+                      <p className="text-sm font-medium text-white">
+                        No face detected. Please stay visible to continue.
+                      </p>
+                      <p className="mt-1 text-xs text-white/75">
+                        Session ends in {facePresenceSecondsLeft}s
+                      </p>
+                    </div>
+                  </div>
+                ) : null}
                 {isPartnerLeft ? (
                   <div className="pointer-events-none absolute inset-0 z-[15] flex items-center justify-center bg-black/50 pb-[45%] lg:pb-0">
                     <div className="mx-4 max-w-sm rounded-sm border border-white/20 bg-black/70 px-4 py-3 text-center backdrop-blur-sm">
