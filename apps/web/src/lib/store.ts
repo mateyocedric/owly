@@ -16,6 +16,7 @@ interface AppState {
   gender: Gender | null;
   interests: string[];
   connectionState: ConnectionState;
+  connectionError: string | null;
   roomId: string | null;
   commonInterests: string[];
   partnerGender: Gender | null;
@@ -29,7 +30,7 @@ interface AppState {
   setAgeVerified: (verified: boolean) => void;
   setGender: (gender: Gender | null) => void;
   setInterests: (interests: string[]) => void;
-  setConnectionState: (state: ConnectionState) => void;
+  setConnectionState: (state: ConnectionState, error?: string | null) => void;
   setRoomId: (
     roomId: string | null,
     commonInterests?: string[],
@@ -110,6 +111,7 @@ export const useAppStore = create<AppState>((set) => ({
   gender: savedGender,
   interests: savedSession?.interests ?? [],
   connectionState: "idle",
+  connectionError: null,
   roomId: null,
   commonInterests: [],
   partnerGender: null,
@@ -160,7 +162,11 @@ export const useAppStore = create<AppState>((set) => ({
         : null,
     })),
 
-  setConnectionState: (connectionState) => set({ connectionState }),
+  setConnectionState: (connectionState, error) =>
+    set({
+      connectionState,
+      connectionError: connectionState === "error" ? error ?? null : null,
+    }),
   setRoomId: (roomId, commonInterests = [], partnerGender = null) =>
     set({
       roomId,
@@ -179,6 +185,7 @@ export const useAppStore = create<AppState>((set) => ({
   resetChat: () =>
     set({
       connectionState: "idle",
+      connectionError: null,
       roomId: null,
       commonInterests: [],
       partnerGender: null,

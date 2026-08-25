@@ -31,6 +31,7 @@ export function ChatPage() {
   const {
     session,
     connectionState,
+    connectionError,
     commonInterests,
     partnerGender,
     messages,
@@ -140,8 +141,8 @@ export function ChatPage() {
                   <div className="max-w-sm space-y-2">
                     <h3 className="sx-panel-title">Connection error</h3>
                     <p className="sx-caption">
-                      Could not start a chat session. Check that the API is running,
-                      then try again.
+                      {connectionError ||
+                        "Could not start a chat session. Check that the API is running, then try again."}
                     </p>
                   </div>
                   <GhostButton

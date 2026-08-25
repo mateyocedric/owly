@@ -199,7 +199,10 @@ export function useChat() {
         store.setSession(session);
       } catch (err) {
         console.error("Failed to establish session:", err);
-        store.setConnectionState("error");
+        store.setConnectionState(
+          "error",
+          err instanceof Error ? err.message : "Failed to create session"
+        );
         return null;
       }
     }

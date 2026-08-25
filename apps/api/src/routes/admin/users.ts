@@ -74,8 +74,9 @@ adminUsersRouter.post("/:id/moderate", async (c) => {
   // If permanent or temporary ban, also record IP ban
   if (parsed.data.action === "permanent_ban" || parsed.data.action === "temporary_ban") {
     let expiresAt: Date | undefined;
-    if (parsed.data.action === "temporary_ban" && parsed.data.duration) {
-      expiresAt = new Date(Date.now() + parsed.data.duration * 3600 * 1000);
+    if (parsed.data.action === "temporary_ban") {
+      const hours = parsed.data.duration ?? 24;
+      expiresAt = new Date(Date.now() + hours * 3600 * 1000);
     }
 
     await BanRecord.create({
@@ -86,6 +87,10 @@ adminUsersRouter.post("/:id/moderate", async (c) => {
       type: parsed.data.action === "permanent_ban" ? "permanent" : "temporary",
       expiresAt,
     });
+  }
+
+  if (parsed.data.action === "unban") {
+    await BanRecord.deleteMany({ ipHash: session.ipHash });
   }
 
   await createAuditLog({

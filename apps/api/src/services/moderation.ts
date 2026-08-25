@@ -92,8 +92,9 @@ export async function applyModerationAction(params: {
   const adminId = new mongoose.Types.ObjectId(params.adminUserId);
 
   let expiresAt: Date | undefined;
-  if (params.actionType === "temporary_ban" && params.durationHours) {
-    expiresAt = new Date(Date.now() + params.durationHours * 3600 * 1000);
+  if (params.actionType === "temporary_ban") {
+    const hours = params.durationHours ?? 24;
+    expiresAt = new Date(Date.now() + hours * 3600 * 1000);
   }
 
   const action = await ModerationAction.create({
