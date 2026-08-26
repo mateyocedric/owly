@@ -142,6 +142,10 @@ export const healthResponseSchema = z.object({
   version: z.string(),
   uptime: z.number(),
   timestamp: z.string().datetime(),
+  services: z.object({
+    database: z.enum(["ok", "disconnected", "error"]),
+    redis: z.enum(["ok", "error"]),
+  }),
 });
 
 export type HealthResponse = z.infer<typeof healthResponseSchema>;
