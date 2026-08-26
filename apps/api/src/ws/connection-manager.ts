@@ -4,6 +4,8 @@ import { WS_CLOSE, type Gender, type ServerEvent } from "@owly/shared";
 export interface WSContextData {
   sessionId: string;
   ip: string;
+  deviceId?: string;
+  deviceLockHeld?: boolean;
   userAgent?: string;
   roomId?: string;
   interests?: string[];

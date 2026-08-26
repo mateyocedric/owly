@@ -111,6 +111,22 @@ describe("WebSocket Event Contracts", () => {
     const parsed = serverEventSchema.safeParse(event);
     expect(parsed.success).toBe(true);
   });
+
+  it("validates server session.ready handshake", () => {
+    const parsed = serverEventSchema.safeParse({ type: "session.ready" });
+    expect(parsed.success).toBe(true);
+  });
+
+  it("validates server device-session rejection", () => {
+    const parsed = serverEventSchema.safeParse({
+      type: "error",
+      data: {
+        code: "DEVICE_SESSION_ACTIVE",
+        message: "You already have an active session on this device.",
+      },
+    });
+    expect(parsed.success).toBe(true);
+  });
 });
 
 describe("Interest queue policy", () => {

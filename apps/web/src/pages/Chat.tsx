@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { GENDER_LABELS, type Gender } from "@owly/shared";
+import { DEVICE_SESSION, GENDER_LABELS, type Gender } from "@owly/shared";
 import { useChat } from "../hooks/useChat.js";
 import { MessageList } from "../components/chat/MessageList.js";
 import { MessageInput } from "../components/chat/MessageInput.js";
@@ -140,7 +140,11 @@ export function ChatPage() {
               ) : isError ? (
                 <>
                   <div className="max-w-sm space-y-2">
-                    <h3 className="sx-panel-title">Connection error</h3>
+                    <h3 className="sx-panel-title">
+                      {connectionError === DEVICE_SESSION.ACTIVE_MESSAGE
+                        ? "Session already active"
+                        : "Connection error"}
+                    </h3>
                     <p className="sx-caption">
                       {connectionError ||
                         "Could not start a chat session. Check that the API is running, then try again."}

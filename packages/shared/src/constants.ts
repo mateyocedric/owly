@@ -86,7 +86,23 @@ export const FACE_PRESENCE = {
 export const WS_CLOSE = {
   REPLACED: 4000,
   EMPTY_MATCH_LIMIT: 4001,
+  DEVICE_SESSION_ACTIVE: 4002,
 } as const;
+
+/** One live WebSocket session per browser device id (Redis TTL lock). */
+export const DEVICE_SESSION = {
+  /** Lock TTL; must outlive a missed ping and match Bun idleTimeout. */
+  TTL_SECONDS: 120,
+  ACTIVE_ERROR_CODE: "DEVICE_SESSION_ACTIVE",
+  ACTIVE_MESSAGE: "You already have an active session on this device.",
+} as const;
+
+const DEVICE_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function isValidDeviceId(value: string): boolean {
+  return DEVICE_ID_PATTERN.test(value);
+}
 
 export const SESSION = {
   /** Token expiry in seconds (default: 24 hours) */
@@ -136,6 +152,10 @@ export const REDIS_KEYS = {
   ONLINE_COUNT_LOCK: "owly:online:count:lock",
   /** Banned words set */
   BANNED_WORDS: "owly:config:banned_words",
+  /** Active device session lock prefix */
+  ACTIVE_DEVICE: "owly:active-device:",
+  /** Temporary active-session lock by hashed IP (optional) */
+  ACTIVE_IP: "owly:active-ip:",
 } as const;
 
 export const REPORT_CATEGORIES = [

@@ -24,16 +24,23 @@ export function apiBaseUrl(): string {
   return raw ? trimSlash(raw) : "";
 }
 
-export function websocketUrl(token?: string | null): string {
+export function websocketUrl(
+  token?: string | null,
+  deviceId?: string | null
+): string {
   const configured = import.meta.env.VITE_WS_URL?.trim();
-  const tokenQuery = token ? `token=${encodeURIComponent(token)}` : "";
 
   if (configured) {
     const url = new URL(trimSlash(configured));
     if (token) url.searchParams.set("token", token);
+    if (deviceId) url.searchParams.set("deviceId", deviceId);
     return url.toString();
   }
 
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  return `${protocol}//${window.location.host}/ws${tokenQuery ? `?${tokenQuery}` : ""}`;
+  const params = new URLSearchParams();
+  if (token) params.set("token", token);
+  if (deviceId) params.set("deviceId", deviceId);
+  const query = params.toString();
+  return `${protocol}//${window.location.host}/ws${query ? `?${query}` : ""}`;
 }

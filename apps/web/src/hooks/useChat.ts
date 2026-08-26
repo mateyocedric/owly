@@ -1,9 +1,13 @@
 import { useEffect, useRef, useCallback, useState } from "react";
-import { CHAT_REACTION_BY_ID, MATCHMAKING, RATE_LIMITS, WS_CLOSE } from "@owly/shared";
+import { CHAT_REACTION_BY_ID, DEVICE_SESSION, MATCHMAKING, RATE_LIMITS, WS_CLOSE } from "@owly/shared";
 import type { ChatReactionId, ClientEvent } from "@owly/shared";
 import { toast } from "sonner";
 import { useAppStore } from "../lib/store.js";
-import { OwlyWSClient } from "../lib/ws-client.js";
+import { isDeviceSessionActiveError, OwlyWSClient } from "../lib/ws-client.js";
+import {
+  publishDeviceSession,
+  subscribeDeviceSessionChannel,
+} from "../lib/device-session-channel.js";
 import { apiFetch } from "../lib/api.js";
 import { nanoid } from "nanoid";
 import {
@@ -45,6 +49,7 @@ export function useChat() {
     async () => {}
   );
   const joiningRef = useRef(false);
+  const holdingDeviceClaimRef = useRef(false);
   const reconnectSoonRef = useRef<number | null>(null);
   const findingReconnectsRef = useRef(0);
   const autoRequeueCountRef = useRef(0);
@@ -120,11 +125,31 @@ export function useChat() {
     clearReconnectSoon();
   }, [clearReconnectSoon]);
 
+  const markDeviceClaimed = useCallback(() => {
+    holdingDeviceClaimRef.current = true;
+    publishDeviceSession("claimed");
+  }, []);
+
+  const markDeviceReleased = useCallback(() => {
+    if (!holdingDeviceClaimRef.current) return;
+    holdingDeviceClaimRef.current = false;
+    publishDeviceSession("released");
+  }, []);
+
+  const showDeviceSessionBlocked = useCallback(() => {
+    markQueueSettled();
+    setWebrtcInitiator(null);
+    store.setRoomId(null);
+    store.setConnectionState("error", DEVICE_SESSION.ACTIVE_MESSAGE);
+    releaseLocalMediaRef.current();
+  }, [markQueueSettled, store]);
+
   const scheduleAutoQueue = useCallback(
     (message: string) => {
       autoRequeueCountRef.current += 1;
       if (autoRequeueCountRef.current > MATCHMAKING.MAX_AUTO_REQUEUES) {
         joiningRef.current = false;
+        markDeviceReleased();
         useAppStore.getState().setConnectionState("idle");
         wsClientRef.current?.disconnect();
         return;
@@ -141,7 +166,7 @@ export function useChat() {
         void joinQueueRef.current();
       }, 2000);
     },
-    [clearAutoQueueTimer]
+    [clearAutoQueueTimer, markDeviceReleased]
   );
 
   const clearSendCooldown = useCallback(() => {
@@ -227,10 +252,22 @@ export function useChat() {
         setWebrtcInitiator(null);
         store.setRoomId(null);
 
-        if (
-          code === WS_CLOSE.REPLACED ||
-          code === WS_CLOSE.EMPTY_MATCH_LIMIT
-        ) {
+        if (code === WS_CLOSE.DEVICE_SESSION_ACTIVE) {
+          showDeviceSessionBlocked();
+          return;
+        }
+
+        if (code === WS_CLOSE.EMPTY_MATCH_LIMIT) {
+          markDeviceReleased();
+          markQueueSettled();
+          store.setConnectionState("idle");
+          releaseLocalMediaRef.current();
+          return;
+        }
+
+        if (code === WS_CLOSE.REPLACED) {
+          // Another socket for this session took over; it still owns the lock.
+          holdingDeviceClaimRef.current = false;
           markQueueSettled();
           store.setConnectionState("idle");
           releaseLocalMediaRef.current();
@@ -242,6 +279,7 @@ export function useChat() {
           findingReconnectsRef.current += 1;
           if (findingReconnectsRef.current > MATCHMAKING.MAX_AUTO_REQUEUES) {
             joiningRef.current = false;
+            markDeviceReleased();
             store.setConnectionState("error");
             return;
           }
@@ -382,9 +420,14 @@ export function useChat() {
               }
             }
             if (event.data.code === "EMPTY_MATCH_LIMIT") {
+              markDeviceReleased();
               markQueueSettled();
               store.setConnectionState("idle");
               releaseLocalMediaRef.current();
+            }
+            if (event.data.code === DEVICE_SESSION.ACTIVE_ERROR_CODE) {
+              showDeviceSessionBlocked();
+              break;
             }
             store.addMessage({
               id: nanoid(),
@@ -399,7 +442,14 @@ export function useChat() {
 
     try {
       await wsClientRef.current.connect();
+      markDeviceClaimed();
     } catch (err) {
+      if (isDeviceSessionActiveError(err)) {
+        wsClientRef.current.disconnect();
+        wsClientRef.current = null;
+        showDeviceSessionBlocked();
+        return null;
+      }
       console.error("Failed to connect WebSocket:", err);
       wsClientRef.current.disconnect();
       wsClientRef.current = null;
@@ -413,6 +463,9 @@ export function useChat() {
     store,
     scheduleAutoQueue,
     markQueueSettled,
+    markDeviceClaimed,
+    markDeviceReleased,
+    showDeviceSessionBlocked,
     clearAutoQueueTimer,
     clearSendCooldown,
     clearReactionBursts,
@@ -552,10 +605,11 @@ export function useChat() {
     setWebrtcInitiator(null);
     wsClientRef.current.send({ type: "chat.stop" });
     wsClientRef.current.disconnect();
+    markDeviceReleased();
     store.setRoomId(null);
     store.setConnectionState("idle");
     releaseLocalMediaRef.current();
-  }, [store, clearAutoQueueTimer, clearReconnectSoon, clearSendCooldown]);
+  }, [store, clearAutoQueueTimer, clearReconnectSoon, clearSendCooldown, markDeviceReleased]);
 
   stopChatRef.current = stopChat;
 
@@ -598,6 +652,29 @@ export function useChat() {
   );
 
   useEffect(() => {
+    return subscribeDeviceSessionChannel((message) => {
+      if (message.type === "claimed") {
+        if (holdingDeviceClaimRef.current) return;
+        const state = useAppStore.getState().connectionState;
+        if (state === "finding" || state === "connected") return;
+        useAppStore
+          .getState()
+          .setConnectionState("error", DEVICE_SESSION.ACTIVE_MESSAGE);
+        return;
+      }
+      if (message.type === "released") {
+        const { connectionState, connectionError } = useAppStore.getState();
+        if (
+          connectionState === "error" &&
+          connectionError === DEVICE_SESSION.ACTIVE_MESSAGE
+        ) {
+          useAppStore.getState().setConnectionState("idle");
+        }
+      }
+    });
+  }, []);
+
+  useEffect(() => {
     return () => {
       if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
       if (autoQueueTimerRef.current) clearTimeout(autoQueueTimerRef.current);
@@ -606,6 +683,10 @@ export function useChat() {
       joiningRef.current = false;
       findingReconnectsRef.current = 0;
       autoRequeueCountRef.current = 0;
+      if (holdingDeviceClaimRef.current) {
+        holdingDeviceClaimRef.current = false;
+        publishDeviceSession("released");
+      }
       const client = wsClientRef.current;
       wsClientRef.current = null;
       if (client) {

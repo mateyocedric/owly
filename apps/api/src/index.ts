@@ -13,6 +13,7 @@ import { statsRouter } from "./routes/stats.js";
 import { adminRouter } from "./routes/admin/index.js";
 import { websocketHandler } from "./ws/handler.js";
 import { validateSessionToken } from "./services/session.js";
+import { parseDeviceId } from "./services/device-session.js";
 import { spaFallback } from "./static.js";
 import type { WSContextData } from "./ws/connection-manager.js";
 
@@ -77,6 +78,7 @@ const server = Bun.serve<WSContextData>({
           data: {
             sessionId: session._id.toString(),
             ip,
+            deviceId: parseDeviceId(url.searchParams.get("deviceId")),
             userAgent: req.headers.get("user-agent") || undefined,
           },
         });

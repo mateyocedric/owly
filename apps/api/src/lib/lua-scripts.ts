@@ -96,3 +96,56 @@ clearUser(currentUserId)
 clearUser(partnerId)
 return {currentUserId, partnerId}
 `;
+
+/**
+ * Acquire every lock key for this session, or none.
+ * Re-entrant: if all existing keys already belong to this sessionId, refresh TTL.
+ * ARGV[1] = sessionId, ARGV[2] = ttl seconds.
+ */
+export const DEVICE_SESSION_ACQUIRE_SCRIPT = `
+local sessionId = ARGV[1]
+local ttl = tonumber(ARGV[2])
+
+for i, key in ipairs(KEYS) do
+    local current = redis.call('GET', key)
+    if current and current ~= sessionId then
+        return 0
+    end
+end
+
+for i, key in ipairs(KEYS) do
+    redis.call('SET', key, sessionId, 'EX', ttl)
+end
+return 1
+`;
+
+/**
+ * Refresh TTL on keys still owned by this session.
+ * ARGV[1] = sessionId, ARGV[2] = ttl seconds.
+ */
+export const DEVICE_SESSION_REFRESH_SCRIPT = `
+local sessionId = ARGV[1]
+local ttl = tonumber(ARGV[2])
+
+for i, key in ipairs(KEYS) do
+    if redis.call('GET', key) == sessionId then
+        redis.call('EXPIRE', key, ttl)
+    end
+end
+return 1
+`;
+
+/**
+ * Delete keys only if they still belong to this session (idempotent).
+ * ARGV[1] = sessionId.
+ */
+export const DEVICE_SESSION_RELEASE_SCRIPT = `
+local sessionId = ARGV[1]
+
+for i, key in ipairs(KEYS) do
+    if redis.call('GET', key) == sessionId then
+        redis.call('DEL', key)
+    end
+end
+return 1
+`;

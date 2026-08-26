@@ -42,6 +42,13 @@ export const envSchema = z.object({
     .positive()
     .default(15),
 
+  // Single active device session (Redis TTL locks)
+  DEVICE_SESSION_TTL_SECONDS: z.coerce.number().int().positive().default(120),
+  DEVICE_SESSION_IP_LOCK_ENABLED: z.preprocess(
+    (value) => value === true || value === "true" || value === "1",
+    z.boolean().default(false)
+  ),
+
   // Moderation
   MODERATION_REPORT_MESSAGE_COUNT: z.coerce
     .number()

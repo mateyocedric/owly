@@ -210,6 +210,10 @@ export const serverPongSchema = z.object({
   type: z.literal("pong"),
 });
 
+export const serverSessionReadySchema = z.object({
+  type: z.literal("session.ready"),
+});
+
 /** Union of all server → client events */
 export const serverEventSchema = z.discriminatedUnion("type", [
   serverQueueWaitingSchema,
@@ -224,6 +228,7 @@ export const serverEventSchema = z.discriminatedUnion("type", [
   serverVideoStateSchema,
   serverErrorSchema,
   serverPongSchema,
+  serverSessionReadySchema,
 ]);
 
 export type ServerEvent = z.infer<typeof serverEventSchema>;
