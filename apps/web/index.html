@@ -5,38 +5,107 @@
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/favicon.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#000000" />
-    <title>Owly — Anonymous Random Chat</title>
-    <meta name="description" content="Safe, ephemeral, 1-on-1 anonymous text chat with optional interest matching and proactive moderation." />
+    <title>Owly — Free Anonymous Chat with Strangers (18+)</title>
+    <meta name="description" content="Chat with strangers instantly. Free anonymous text and video chat, no signup. 18+ Omegle-style matching with interest tags, skip, and report." />
     <link rel="canonical" href="https://owly.fun/" />
 
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Owly" />
-    <meta property="og:title" content="Owly — Anonymous Random Chat" />
-    <meta property="og:description" content="Safe, ephemeral, 1-on-1 anonymous text chat with optional interest matching and proactive moderation." />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:title" content="Owly — Free Anonymous Chat with Strangers (18+)" />
+    <meta property="og:description" content="Chat with strangers instantly. Free anonymous text and video chat, no signup. 18+ Omegle-style matching with interest tags, skip, and report." />
     <meta property="og:url" content="https://owly.fun/" />
     <meta property="og:image" content="https://owly.fun/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
 
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Owly — Anonymous Random Chat" />
-    <meta name="twitter:description" content="Safe, ephemeral, 1-on-1 anonymous text chat with optional interest matching and proactive moderation." />
+    <meta name="twitter:title" content="Owly — Free Anonymous Chat with Strangers (18+)" />
+    <meta name="twitter:description" content="Chat with strangers instantly. Free anonymous text and video chat, no signup. 18+ Omegle-style matching with interest tags, skip, and report." />
     <meta name="twitter:image" content="https://owly.fun/og-image.png" />
 
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@type": "WebApplication",
-        "name": "Owly",
-        "url": "https://owly.fun",
-        "description": "Safe, ephemeral, 1-on-1 anonymous text chat with optional interest matching and proactive moderation.",
-        "applicationCategory": "CommunicationApplication",
-        "operatingSystem": "Web",
-        "offers": {
-          "@type": "Offer",
-          "price": "0",
-          "priceCurrency": "USD"
-        }
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "https://owly.fun/#website",
+            "url": "https://owly.fun/",
+            "name": "Owly",
+            "alternateName": ["Owly Chat", "owly.fun"],
+            "description": "Free anonymous text and video chat with strangers. No signup. 18+ Omegle-style matching.",
+            "publisher": { "@id": "https://owly.fun/#organization" }
+          },
+          {
+            "@type": "Organization",
+            "@id": "https://owly.fun/#organization",
+            "name": "Owly",
+            "url": "https://owly.fun/",
+            "email": "support@owly.fun",
+            "logo": "https://owly.fun/logo.png"
+          },
+          {
+            "@type": "WebApplication",
+            "@id": "https://owly.fun/#app",
+            "name": "Owly",
+            "alternateName": "Owly Chat",
+            "url": "https://owly.fun",
+            "description": "Chat with strangers instantly. Free anonymous text and video chat, no signup. 18+ Omegle-style matching with interest tags, skip, and report.",
+            "applicationCategory": "CommunicationApplication",
+            "operatingSystem": "Web",
+            "isAccessibleForFree": true,
+            "featureList": [
+              "Anonymous 1-on-1 text chat",
+              "Anonymous 1-on-1 video chat",
+              "Optional interest matching",
+              "No account or signup",
+              "18+ age gate",
+              "Skip and report"
+            ],
+            "audience": {
+              "@type": "PeopleAudience",
+              "suggestedMinAge": 18
+            },
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD"
+            }
+          },
+          {
+            "@type": "FAQPage",
+            "@id": "https://owly.fun/#faq",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "Does Owly have video chat?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. Owly supports both anonymous text chat and live 1-on-1 video chat in the browser. No app download is required."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Is Owly free? Do I need an account?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Owly is free to use and does not require an account, email, or username. Confirm you are 18+, optionally pick interests, and start chatting."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Is Owly 18+ only?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. Owly is age-gated for adults 18 and older. You must confirm your age before entering chat."
+                }
+              }
+            ]
+          }
+        ]
       }
     </script>
 
@@ -55,6 +124,23 @@
   </head>
   <body class="text-foreground antialiased min-h-dvh overflow-x-hidden font-sans">
     <div id="root"></div>
+    <noscript>
+      <main>
+        <h1>Talk to strangers. Text or video.</h1>
+        <p>Owly (owly.fun) is a free, no-account Omegle-style chat for adults 18+. Match one-on-one with strangers by interests or go fully random. Skip, report, and chats disappear when the session ends.</p>
+        <p>Owly supports anonymous text chat and live 1-on-1 video chat in the browser. No app download.</p>
+        <ul>
+          <li><a href="/guidelines">Community guidelines</a></li>
+          <li><a href="/privacy">Privacy policy</a></li>
+          <li><a href="/terms">Terms of use</a></li>
+        </ul>
+        <h2>Frequently asked questions</h2>
+        <h3>Does Owly have video chat?</h3>
+        <p>Yes. Text and live 1-on-1 video chat in the browser. No app required.</p>
+        <h3>Is Owly free? Do I need an account?</h3>
+        <p>Free. No account, email, or username.</p>
+      </main>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

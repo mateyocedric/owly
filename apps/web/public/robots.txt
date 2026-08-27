@@ -3,11 +3,43 @@ Allow: /
 Allow: /privacy
 Allow: /terms
 Allow: /guidelines
+Disallow: /llms.txt
+Disallow: /omegle-alternative
 Disallow: /chat
+Disallow: /session
+Disallow: /session/
 Disallow: /admin
 Disallow: /settings
 Disallow: /age-gate
 Disallow: /interests
 Disallow: /components
+
+User-agent: GPTBot
+Allow: /llms.txt
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /llms.txt
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /llms.txt
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /llms.txt
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /llms.txt
+Allow: /
+
+User-agent: Google-Extended
+Allow: /llms.txt
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /llms.txt
+Allow: /
 
 Sitemap: https://owly.fun/sitemap.xml

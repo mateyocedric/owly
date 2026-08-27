@@ -1,5 +1,6 @@
 import React from "react";
 import { siteUrl } from "../lib/config.js";
+import { DEFAULT_DESCRIPTION } from "../lib/seo.js";
 
 type SeoProps = {
   title: string;
@@ -9,9 +10,6 @@ type SeoProps = {
   jsonLd?: Record<string, unknown> | Record<string, unknown>[];
 };
 
-const DEFAULT_DESCRIPTION =
-  "Safe, ephemeral, 1-on-1 anonymous text chat with optional interest matching and proactive moderation.";
-
 export function Seo({
   title,
   description = DEFAULT_DESCRIPTION,
@@ -20,6 +18,7 @@ export function Seo({
   jsonLd,
 }: SeoProps) {
   const canonical = siteUrl(path);
+  const image = siteUrl("/og-image.png");
   const robots = noindex ? "noindex, nofollow" : "index, follow";
 
   return (
@@ -28,6 +27,21 @@ export function Seo({
       <meta name="description" content={description} />
       <meta name="robots" content={robots} />
       <link rel="canonical" href={canonical} />
+
+      <meta property="og:type" content="website" />
+      <meta property="og:site_name" content="Owly" />
+      <meta property="og:title" content={title} />
+      <meta property="og:description" content={description} />
+      <meta property="og:url" content={canonical} />
+      <meta property="og:image" content={image} />
+      <meta property="og:image:width" content="1200" />
+      <meta property="og:image:height" content="630" />
+      <meta property="og:locale" content="en_US" />
+
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:title" content={title} />
+      <meta name="twitter:description" content={description} />
+      <meta name="twitter:image" content={image} />
       {jsonLd ? (
         <script
           type="application/ld+json"

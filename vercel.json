@@ -2,5 +2,10 @@
   "buildCommand": "bun run --filter @owly/web build",
   "outputDirectory": "apps/web/dist",
   "installCommand": "bun install",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    {
+      "source": "/((?!sitemap\\.xml|robots\\.txt|ads\\.txt|llms\\.txt|.*\\..*).*)",
+      "destination": "/index.html"
+    }
+  ]
 }

@@ -57,6 +57,7 @@ function AppRoutes() {
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/guidelines" element={<GuidelinesPage />} />
+          <Route path="/omegle-alternative" element={<Navigate to="/" replace />} />
           <Route path="/components" element={<ComponentsPage />} />
         </Routes>
       </main>

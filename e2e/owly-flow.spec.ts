@@ -7,7 +7,7 @@ test.describe("Owly Anonymous Random Chat User Flow", () => {
     // 1. Visit landing page
     await page.goto("/");
     await expect(page).toHaveTitle(/Owly/);
-    await expect(page.getByText("Talk to strangers.")).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Talk to strangers/i })).toBeVisible();
 
     // 2. Click Start Chatting -> redirects to age gate
     await page.getByRole("button", { name: /Start Chatting Now/i }).click();

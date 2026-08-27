@@ -1,16 +1,15 @@
 import React from "react";
 import { BackLink, PageContainer, PageHeader, ProseSection } from "../components/design/index.js";
 import { Seo } from "../components/Seo.js";
+import { publicPage } from "../lib/seo.js";
 import { owlyEmail, owlyMailto } from "../lib/config.js";
+
+const page = publicPage("/terms");
 
 export function TermsPage() {
   return (
     <PageContainer className="space-y-8">
-      <Seo
-        title="Terms of Use — Owly"
-        description="Terms of use for Owly anonymous chat: eligibility, acceptable conduct, and account-free session rules."
-        path="/terms"
-      />
+      <Seo title={page.title} description={page.description} path={page.path} />
       <PageHeader eyebrow="Legal" title="Terms of Use" description="Last updated: February 2026" />
 
       <div className="space-y-8">

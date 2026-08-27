@@ -15,6 +15,7 @@ import { websocketHandler } from "./ws/handler.js";
 import { validateSessionToken } from "./services/session.js";
 import { parseDeviceId } from "./services/device-session.js";
 import { spaFallback } from "./static.js";
+import { canonicalHostMiddleware } from "./middleware/canonical-host.js";
 import type { WSContextData } from "./ws/connection-manager.js";
 
 // Initialize Database connection
@@ -24,6 +25,7 @@ const app = new Hono();
 
 // Global Middlewares
 app.use("*", requestIdMiddleware);
+app.use("*", canonicalHostMiddleware);
 app.use("*", corsMiddleware);
 app.use("/api/*", sessionMiddleware);
 

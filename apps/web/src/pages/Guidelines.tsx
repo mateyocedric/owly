@@ -1,16 +1,15 @@
 import React from "react";
 import { BackLink, PageContainer, PageHeader, ProseSection } from "../components/design/index.js";
 import { Seo } from "../components/Seo.js";
+import { publicPage } from "../lib/seo.js";
 import { owlyEmail, owlyMailto } from "../lib/config.js";
+
+const page = publicPage("/guidelines");
 
 export function GuidelinesPage() {
   return (
     <PageContainer className="space-y-8">
-      <Seo
-        title="Community Guidelines — Owly"
-        description="Community guidelines for Owly: protect your identity, stay respectful, and report unsafe behavior."
-        path="/guidelines"
-      />
+      <Seo title={page.title} description={page.description} path={page.path} />
       <PageHeader
         eyebrow="Community"
         title="Guidelines"

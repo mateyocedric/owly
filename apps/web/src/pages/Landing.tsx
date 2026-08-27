@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight, Lock, Shield, UserX } from "lucide-react";
 import { useAppStore } from "../lib/store.js";
 import { Seo } from "../components/Seo.js";
+import { DEFAULT_DESCRIPTION, DEFAULT_TITLE, HOMEPAGE_FAQ } from "../lib/seo.js";
 import {
   FeatureCard,
   GhostButton,
@@ -10,46 +11,24 @@ import {
   ProseSection,
 } from "../components/design/index.js";
 
-const FAQ_ITEMS = [
+const HOW_IT_WORKS = [
   {
-    question: "Is Owly anonymous?",
-    answer:
-      "Yes. Owly does not require profiles, emails, or usernames. Chat partners never see your IP address, email, or hardware identifiers.",
+    title: "Confirm you are 18+",
+    body: "Owly is adults-only. Age verification and community guidelines come before any chat.",
   },
   {
-    question: "Do I need an account?",
-    answer:
-      "No. There is no sign-up. You confirm you are 18+, optionally pick interests, and start chatting.",
+    title: "Optional interests",
+    body: "Add topics you want to talk about, or skip them and match completely at random.",
   },
   {
-    question: "Is Owly 18+ only?",
-    answer:
-      "Yes. Owly is age-gated for adults 18 and older. You must confirm your age before entering chat.",
+    title: "Text or video",
+    body: "Choose anonymous text chat or live 1-on-1 video. Both run in the browser — no app.",
   },
   {
-    question: "Are chats saved?",
-    answer:
-      "No. Conversations are ephemeral. Once a session ends, chat history is not archived for later viewing.",
-  },
-  {
-    question: "How does moderation work?",
-    answer:
-      "Owly uses proactive content filters, one-click reporting, and staff tools to block abuse and keep conversations safer.",
+    title: "Skip or report",
+    body: "Move to the next person anytime. Report and block tools are one click away.",
   },
 ] as const;
-
-const FAQ_JSON_LD = {
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  mainEntity: FAQ_ITEMS.map((item) => ({
-    "@type": "Question",
-    name: item.question,
-    acceptedAnswer: {
-      "@type": "Answer",
-      text: item.answer,
-    },
-  })),
-};
 
 export function LandingPage() {
   const navigate = useNavigate();
@@ -66,23 +45,19 @@ export function LandingPage() {
 
   return (
     <>
-      <Seo
-        title="Owly — Anonymous Random Chat"
-        path="/"
-        jsonLd={FAQ_JSON_LD}
-      />
+      <Seo title={DEFAULT_TITLE} description={DEFAULT_DESCRIPTION} path="/" />
       <PageContainer wide className="space-y-16 py-16 sm:py-24">
         <div className="mx-auto max-w-3xl space-y-8 text-center">
-
           <h1 className="sx-display-hero">
             Talk to strangers.
             <br />
-            Safely &amp; ephemerally.
+            Text or video.
           </h1>
 
           <p className="sx-body mx-auto max-w-2xl">
-            Connect one-on-one with real people around the globe. No profiles, no saved history,
-            zero personal tracking. Match by shared interests or go totally random.
+            Owly is a free, no-account Omegle-style chat for adults 18+. Match one-on-one with
+            strangers by interests or go fully random. Skip, report, and chats disappear when the
+            session ends.
           </p>
 
           <div className="flex flex-col items-center gap-6 pt-4">
@@ -97,38 +72,53 @@ export function LandingPage() {
 
           <div className="flex flex-wrap items-center justify-center gap-6 pt-2">
             <span className="sx-caption inline-flex items-center gap-1.5 uppercase tracking-wider">
-              <Lock className="size-3.5" /> Ephemeral
+              <Lock className="size-3.5" /> No Sign-up
             </span>
             <span className="sx-caption inline-flex items-center gap-1.5 uppercase tracking-wider">
-              <Shield className="size-3.5" /> 18+ Verified
+              <Shield className="size-3.5" /> 18+ Age Gated
             </span>
             <span className="sx-caption inline-flex items-center gap-1.5 uppercase tracking-wider">
-              <UserX className="size-3.5" /> No Sign-up
+              <UserX className="size-3.5" /> Anonymous
             </span>
           </div>
         </div>
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           <FeatureCard
-            title="100% Anonymous"
-            description="We never expose IP addresses, emails, or hardware IDs to chat partners. Identity stays completely anonymous."
+            title="Text and video"
+            description="Chat 1-on-1 with a stranger over anonymous text or live video. Both modes work in any modern browser."
           />
           <FeatureCard
-            title="Instant Pairing"
-            description="Atomic queue matching connects waiting users in milliseconds with seamless skip and reconnect."
+            title="Instant matching"
+            description="Join a queue and get paired in seconds. Skip to the next person whenever you want a new conversation."
           />
           <FeatureCard
-            title="Proactive Moderation"
-            description="Built-in content filters with one-click report and instant block tools to keep conversations safe."
+            title="Moderated, 18+"
+            description="Built-in filters, one-click report, and staff tools. Owly is for adults only — no profiles, no saved history."
           />
         </div>
+
+        <section className="mx-auto max-w-3xl space-y-6" aria-labelledby="how-heading">
+          <h2 id="how-heading" className="sx-display-page text-center">
+            How Owly works
+          </h2>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            {HOW_IT_WORKS.map((step, index) => (
+              <article key={step.title} className="space-y-2">
+                <p className="sx-eyebrow">{String(index + 1).padStart(2, "0")}</p>
+                <h3 className="sx-panel-title text-base">{step.title}</h3>
+                <p className="sx-caption leading-relaxed">{step.body}</p>
+              </article>
+            ))}
+          </div>
+        </section>
 
         <section className="mx-auto max-w-3xl space-y-6" aria-labelledby="faq-heading">
           <h2 id="faq-heading" className="sx-display-page text-center">
             Frequently asked questions
           </h2>
           <div className="space-y-6">
-            {FAQ_ITEMS.map((item) => (
+            {HOMEPAGE_FAQ.map((item) => (
               <ProseSection key={item.question} title={item.question}>
                 <p>{item.answer}</p>
               </ProseSection>
