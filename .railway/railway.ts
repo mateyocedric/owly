@@ -17,7 +17,7 @@ export default defineRailway(() => {
       MONGODB_URI: mongoDb.env.MONGO_URL,
       REDIS_URL: "redis://127.0.0.1:6379",
       DEVICE_SESSION_TTL_SECONDS: "120",
-      DEVICE_SESSION_IP_LOCK_ENABLED: "false",
+      DEVICE_SESSION_IP_LOCK_ENABLED: "true",
     },
   });
 
