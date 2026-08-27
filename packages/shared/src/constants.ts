@@ -94,7 +94,7 @@ export const DEVICE_SESSION = {
   /** Lock TTL; must outlive a missed ping and match Bun idleTimeout. */
   TTL_SECONDS: 120,
   ACTIVE_ERROR_CODE: "DEVICE_SESSION_ACTIVE",
-  ACTIVE_MESSAGE: "You already have an active session on this device.",
+  ACTIVE_MESSAGE: "You already have an active session on this network.",
 } as const;
 
 const DEVICE_ID_PATTERN =
