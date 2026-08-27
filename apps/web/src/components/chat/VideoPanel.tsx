@@ -68,7 +68,23 @@ const VideoTile = memo(function VideoTile({
     if (el.srcObject !== stream) {
       el.srcObject = stream;
     }
+    if (stream) {
+      void el.play().catch(() => {});
+    }
   }, [stream]);
+
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el) return;
+
+    const keepPlaying = () => {
+      if (!el.srcObject) return;
+      void el.play().catch(() => {});
+    };
+
+    el.addEventListener("pause", keepPlaying);
+    return () => el.removeEventListener("pause", keepPlaying);
+  }, []);
 
   return (
     <div
@@ -81,7 +97,12 @@ const VideoTile = memo(function VideoTile({
         autoPlay
         playsInline
         muted={muted}
-        className={`h-full w-full object-cover ${mirror ? "scale-x-[-1]" : ""} ${
+        disablePictureInPicture
+        disableRemotePlayback
+        controls={false}
+        tabIndex={-1}
+        onContextMenu={(event) => event.preventDefault()}
+        className={`pointer-events-none h-full w-full object-cover ${mirror ? "scale-x-[-1]" : ""} ${
           stream && !showOffOverlay ? "opacity-100" : "opacity-0"
         }`}
       />
