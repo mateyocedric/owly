@@ -49,7 +49,7 @@ export function AgeGatePage() {
     if (!selectedGender) return;
     setAgeVerified(true);
     setGender(selectedGender);
-    navigate("/chat");
+    navigate("/session");
   };
 
   return (

@@ -1,24 +1,34 @@
 import { redis } from "../lib/redis.js";
-import { REDIS_KEYS, SESSION } from "@owly/shared";
+import {
+  SESSION,
+  queueKeys,
+  type ChatMode,
+} from "@owly/shared";
 import { normalizeInterest, shouldJoinGeneralQueue } from "./policy.js";
 
 export { normalizeInterest, shouldJoinGeneralQueue } from "./policy.js";
 
-function sessionInterestsKey(sessionId: string): string {
-  return `${REDIS_KEYS.QUEUE_SESSION_INTERESTS}${sessionId}`;
+function resolveMode(mode?: ChatMode): ChatMode {
+  return mode === "text" ? "text" : "video";
+}
+
+function sessionInterestsKey(sessionId: string, mode: ChatMode): string {
+  return `${queueKeys(mode).sessionInterests}${sessionId}`;
 }
 
 export async function addToQueue(
   sessionId: string,
   interests: string[] = [],
-  options: { general?: boolean } = {}
+  options: { general?: boolean; mode?: ChatMode } = {}
 ): Promise<void> {
+  const mode = resolveMode(options.mode);
+  const keys = queueKeys(mode);
   const timestamp = Date.now();
   const includeGeneral = options.general !== false;
   const multi = redis.multi();
 
   if (includeGeneral) {
-    multi.zadd(REDIS_KEYS.QUEUE_GENERAL, timestamp, sessionId);
+    multi.zadd(keys.general, timestamp, sessionId);
   }
 
   const slugs: string[] = [];
@@ -26,11 +36,11 @@ export async function addToQueue(
     const slug = normalizeInterest(interest);
     if (!slug) continue;
     slugs.push(slug);
-    multi.zadd(`${REDIS_KEYS.QUEUE_INTEREST}${slug}`, timestamp, sessionId);
+    multi.zadd(`${keys.interest}${slug}`, timestamp, sessionId);
   }
 
   if (slugs.length > 0) {
-    const trackedKey = sessionInterestsKey(sessionId);
+    const trackedKey = sessionInterestsKey(sessionId, mode);
     multi.sadd(trackedKey, ...slugs);
     multi.expire(trackedKey, SESSION.TTL_SECONDS);
   }
@@ -38,15 +48,20 @@ export async function addToQueue(
   await multi.exec();
 }
 
-export async function addToGeneralQueue(sessionId: string): Promise<void> {
-  await redis.zadd(REDIS_KEYS.QUEUE_GENERAL, Date.now(), sessionId);
+export async function addToGeneralQueue(
+  sessionId: string,
+  mode: ChatMode = "video"
+): Promise<void> {
+  const keys = queueKeys(resolveMode(mode));
+  await redis.zadd(keys.general, Date.now(), sessionId);
 }
 
 export async function requeueSession(
   sessionId: string,
   interests: string[],
   queuedAt: number | undefined,
-  interestTimeoutSeconds: number
+  interestTimeoutSeconds: number,
+  mode: ChatMode = "video"
 ): Promise<void> {
   await addToQueue(sessionId, interests, {
     general: shouldJoinGeneralQueue(
@@ -54,14 +69,18 @@ export async function requeueSession(
       queuedAt,
       interestTimeoutSeconds
     ),
+    mode: resolveMode(mode),
   });
 }
 
 export async function removeFromQueue(
   sessionId: string,
-  interests: string[] = []
+  interests: string[] = [],
+  mode: ChatMode = "video"
 ): Promise<void> {
-  const trackedKey = sessionInterestsKey(sessionId);
+  const resolved = resolveMode(mode);
+  const keys = queueKeys(resolved);
+  const trackedKey = sessionInterestsKey(sessionId, resolved);
   const tracked = await redis.smembers(trackedKey);
   const slugs = new Set<string>(tracked);
 
@@ -71,17 +90,21 @@ export async function removeFromQueue(
   }
 
   const multi = redis.multi();
-  multi.zrem(REDIS_KEYS.QUEUE_GENERAL, sessionId);
+  multi.zrem(keys.general, sessionId);
 
   for (const slug of slugs) {
-    multi.zrem(`${REDIS_KEYS.QUEUE_INTEREST}${slug}`, sessionId);
+    multi.zrem(`${keys.interest}${slug}`, sessionId);
   }
 
   multi.del(trackedKey);
   await multi.exec();
 }
 
-export async function getQueuePosition(sessionId: string): Promise<number> {
-  const rank = await redis.zrank(REDIS_KEYS.QUEUE_GENERAL, sessionId);
+export async function getQueuePosition(
+  sessionId: string,
+  mode: ChatMode = "video"
+): Promise<number> {
+  const keys = queueKeys(resolveMode(mode));
+  const rank = await redis.zrank(keys.general, sessionId);
   return rank !== null ? rank + 1 : 0;
 }

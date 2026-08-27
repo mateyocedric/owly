@@ -1,30 +1,30 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { DEVICE_SESSION, GENDER_LABELS, type Gender } from "@owly/shared";
-import { useChat } from "../hooks/useChat.js";
-import { MessageList } from "../components/chat/MessageList.js";
-import { MessageInput } from "../components/chat/MessageInput.js";
-import { ChatControls } from "../components/chat/ChatControls.js";
-import { VideoPanel } from "../components/chat/VideoPanel.js";
-import { VideoChatLayout } from "../components/chat/VideoChatLayout.js";
-import { ReactionBar } from "../components/chat/ReactionBar.js";
-import { StatusIndicator } from "../components/chat/StatusIndicator.js";
-import { SafetyReminder } from "../components/chat/SafetyReminder.js";
-import { ReportModal } from "../components/chat/ReportModal.js";
-import { WaitingScreen } from "../components/matching/WaitingScreen.js";
-import { OnlineCountBadge } from "../components/chat/OnlineCountBadge.js";
-import { useOnlineCount } from "../hooks/useOnlineCount.js";
-import { useAppStore } from "../lib/store.js";
-import { Seo } from "../components/Seo.js";
-import { OwlyLogo } from "../components/brand/OwlyLogo.js";
-import { GhostButton, PageContainer } from "../components/design/index.js";
+import { useChat } from "../../hooks/useChat.js";
+import { MessageList } from "../../components/chat/MessageList.js";
+import { MessageInput } from "../../components/chat/MessageInput.js";
+import { ChatControls } from "../../components/chat/ChatControls.js";
+import { VideoPanel } from "../../components/chat/VideoPanel.js";
+import { VideoChatLayout } from "../../components/chat/VideoChatLayout.js";
+import { ReactionBar } from "../../components/chat/ReactionBar.js";
+import { StatusIndicator } from "../../components/chat/StatusIndicator.js";
+import { SafetyReminder } from "../../components/chat/SafetyReminder.js";
+import { ReportModal } from "../../components/chat/ReportModal.js";
+import { WaitingScreen } from "../../components/matching/WaitingScreen.js";
+import { OnlineCountBadge } from "../../components/chat/OnlineCountBadge.js";
+import { useOnlineCount } from "../../hooks/useOnlineCount.js";
+import { useAppStore } from "../../lib/store.js";
+import { Seo } from "../../components/Seo.js";
+import { OwlyLogo } from "../../components/brand/OwlyLogo.js";
+import { GhostButton, PageContainer } from "../../components/design/index.js";
 
 function GenderChip({ gender }: { gender: Gender | null }) {
   if (!gender) return null;
   return <span className="sx-chip shrink-0">{GENDER_LABELS[gender]}</span>;
 }
 
-export function ChatPage() {
+export function SessionVideoPage() {
   const navigate = useNavigate();
   const ageVerified = useAppStore((s) => s.ageVerified);
   const gender = useAppStore((s) => s.gender);
@@ -58,16 +58,34 @@ export function ChatPage() {
     toggleMic,
     facePresenceWarning,
     facePresenceSecondsLeft,
-  } = useChat();
+  } = useChat({ mode: "video" });
 
   const onlineCount = useOnlineCount();
   const [reportModalOpen, setReportModalOpen] = useState(false);
+  const wasActiveRef = useRef(false);
 
   useEffect(() => {
     if (!ageVerified || !gender) {
       navigate("/age-gate");
     }
   }, [ageVerified, gender, navigate]);
+
+  // Auto-join once on mount (lobby already chose video).
+  useEffect(() => {
+    void joinQueue();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- join once on enter
+  }, []);
+
+  // After stop / empty-match / ended → return to lobby.
+  useEffect(() => {
+    if (connectionState !== "idle") {
+      wasActiveRef.current = true;
+      return;
+    }
+    if (wasActiveRef.current) {
+      navigate("/session", { replace: true });
+    }
+  }, [connectionState, navigate]);
 
   const isConnected = connectionState === "connected";
   const isFinding = connectionState === "finding";
@@ -79,7 +97,6 @@ export function ChatPage() {
   const showVideo = isConnected || isPartnerLeft;
   const chromeGender = isConnected ? partnerGender : gender;
   const isRequestingMedia = videoStatus === "requesting";
-  const startChatLabel = isRequestingMedia ? "Allow camera..." : "Start Chatting";
   const tryAgainLabel = isRequestingMedia ? "Allow camera..." : "Try Again";
   const rejoinLabel = isRequestingMedia ? "Allow camera..." : "Rejoin Now";
 
@@ -91,93 +108,84 @@ export function ChatPage() {
     />
   );
 
-  const seo = <Seo title="Chat — Owly" path="/chat" noindex />;
+  const seo = <Seo title="Video Chat — Owly" path="/session/video" noindex />;
 
   if (isPreSession) {
     return (
       <>
         {seo}
         <PageContainer wide className="flex min-h-0 w-full flex-1 flex-col !py-4">
-        <div className="mb-3 flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
-          <div className="flex w-full min-w-0 flex-1 items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-2">
-              <StatusIndicator state={connectionState} commonInterests={commonInterests} />
+          <div className="mb-3 flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+            <div className="flex w-full min-w-0 flex-1 items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2">
+                <StatusIndicator state={connectionState} commonInterests={commonInterests} />
+              </div>
+              <OnlineCountBadge count={onlineCount} className="shrink-0" />
             </div>
-            <OnlineCountBadge count={onlineCount} className="shrink-0" />
+            <SafetyReminder />
           </div>
-          <SafetyReminder />
-        </div>
 
-        <div className="sx-chat-shell flex flex-1 flex-col">
-          {isFinding ? (
-            <WaitingScreen
-              interests={session?.interests}
-              gender={gender}
-              onlineCount={onlineCount}
-              onCancel={stopChat}
-            />
-          ) : (
-            <div className="flex flex-1 flex-col items-center justify-center space-y-6 p-8 text-center">
-              <OwlyLogo size="md" alt="" />
+          <div className="sx-chat-shell flex flex-1 flex-col">
+            {isFinding || isIdle ? (
+              <WaitingScreen
+                interests={session?.interests}
+                gender={gender}
+                onlineCount={onlineCount}
+                onCancel={() => {
+                  stopChat();
+                  navigate("/session", { replace: true });
+                }}
+              />
+            ) : (
+              <div className="flex flex-1 flex-col items-center justify-center space-y-6 p-8 text-center">
+                <OwlyLogo size="md" alt="" />
 
-              {isIdle ? (
-                <>
-                  <div className="max-w-sm space-y-2">
-                    <h3 className="sx-panel-title">
-                      Ready for a conversation?
-                    </h3>
-                    <p className="sx-caption">
-                      Enter the matching queue to connect with a random stranger.
-                    </p>
-                  </div>
-                  <GhostButton
-                    disabled={isRequestingMedia}
-                    onClick={() => joinQueue()}
-                  >
-                    {startChatLabel}
-                  </GhostButton>
-                </>
-              ) : isError ? (
-                <>
-                  <div className="max-w-sm space-y-2">
-                    <h3 className="sx-panel-title">
-                      {connectionError === DEVICE_SESSION.ACTIVE_MESSAGE
-                        ? "Session already active"
-                        : "Connection error"}
-                    </h3>
-                    <p className="sx-caption">
-                      {connectionError ||
-                        "Could not start a chat session. Check that the API is running, then try again."}
-                    </p>
-                  </div>
-                  <GhostButton
-                    disabled={isRequestingMedia}
-                    onClick={() => joinQueue()}
-                  >
-                    {tryAgainLabel}
-                  </GhostButton>
-                </>
-              ) : (
-                <>
-                  <div className="max-w-sm space-y-2">
-                    <h3 className="sx-panel-title">Disconnected</h3>
-                    <p className="sx-caption">
-                      Connection lost. Rejoining the queue in a moment...
-                    </p>
-                  </div>
-                  <GhostButton
-                    disabled={isRequestingMedia}
-                    onClick={() => joinQueue()}
-                  >
-                    {rejoinLabel}
-                  </GhostButton>
-                </>
-              )}
-            </div>
-          )}
-        </div>
+                {isError ? (
+                  <>
+                    <div className="max-w-sm space-y-2">
+                      <h3 className="sx-panel-title">
+                        {connectionError === DEVICE_SESSION.ACTIVE_MESSAGE
+                          ? "Session already active"
+                          : "Connection error"}
+                      </h3>
+                      <p className="sx-caption">
+                        {connectionError ||
+                          "Could not start a video session. Check that the API is running, then try again."}
+                      </p>
+                    </div>
+                    <div className="flex flex-col gap-3 sm:flex-row">
+                      <GhostButton
+                        disabled={isRequestingMedia}
+                        onClick={() => joinQueue()}
+                      >
+                        {tryAgainLabel}
+                      </GhostButton>
+                      <GhostButton onClick={() => navigate("/session")}>
+                        Back
+                      </GhostButton>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="max-w-sm space-y-2">
+                      <h3 className="sx-panel-title">Disconnected</h3>
+                      <p className="sx-caption">
+                        Connection lost. Rejoining the queue in a moment...
+                      </p>
+                    </div>
+                    <GhostButton
+                      disabled={isRequestingMedia}
+                      onClick={() => joinQueue()}
+                    >
+                      {rejoinLabel}
+                    </GhostButton>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
 
-        {reportModal}
+          {reportModal}
         </PageContainer>
       </>
     );
@@ -261,7 +269,10 @@ export function ChatPage() {
               <ChatControls
                 connectionState={connectionState}
                 onNext={nextChat}
-                onStop={stopChat}
+                onStop={() => {
+                  stopChat();
+                  navigate("/session", { replace: true });
+                }}
                 onOpenReport={() => setReportModalOpen(true)}
                 onBlock={blockPartner}
               />

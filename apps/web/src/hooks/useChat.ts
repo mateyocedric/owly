@@ -1,8 +1,15 @@
 import { useEffect, useRef, useCallback, useState } from "react";
-import { CHAT_REACTION_BY_ID, DEVICE_SESSION, MATCHMAKING, RATE_LIMITS, WS_CLOSE } from "@owly/shared";
+import {
+  CHAT_REACTION_BY_ID,
+  DEVICE_SESSION,
+  MATCHMAKING,
+  RATE_LIMITS,
+  WS_CLOSE,
+  type ChatMode,
+} from "@owly/shared";
 import type { ChatReactionId, ClientEvent } from "@owly/shared";
 import { toast } from "sonner";
-import { useAppStore } from "../lib/store.js";
+import { useAppStore, type UserSession } from "../lib/store.js";
 import { isDeviceSessionActiveError, OwlyWSClient } from "../lib/ws-client.js";
 import {
   publishDeviceSession,
@@ -34,7 +41,62 @@ function createReactionBurst(
   };
 }
 
-export function useChat() {
+/** Serialize POST /session so Strict Mode / double mount cannot mint two sessions. */
+let ensureSessionInFlight: Promise<UserSession> | null = null;
+
+async function ensureAnonymousSession(): Promise<UserSession> {
+  const store = useAppStore.getState();
+  const existing = store.session;
+  const expired =
+    !!existing?.expiresAt && new Date(existing.expiresAt).getTime() <= Date.now();
+  if (existing?.token && !expired) {
+    return existing;
+  }
+
+  if (ensureSessionInFlight) {
+    return ensureSessionInFlight;
+  }
+
+  ensureSessionInFlight = (async () => {
+    const again = useAppStore.getState().session;
+    const againExpired =
+      !!again?.expiresAt && new Date(again.expiresAt).getTime() <= Date.now();
+    if (again?.token && !againExpired) {
+      return again;
+    }
+
+    const created = await apiFetch<{
+      sessionId: string;
+      token: string;
+      expiresAt: string;
+    }>("/session", {
+      method: "POST",
+      body: JSON.stringify({
+        interests: useAppStore.getState().interests || [],
+        gender: useAppStore.getState().gender || undefined,
+      }),
+    });
+
+    const session: UserSession = {
+      sessionId: created.sessionId,
+      token: created.token,
+      expiresAt: created.expiresAt,
+      ageVerified: true,
+      interests: useAppStore.getState().interests || [],
+      gender: useAppStore.getState().gender,
+    };
+    useAppStore.getState().setSession(session);
+    return session;
+  })().finally(() => {
+    ensureSessionInFlight = null;
+  });
+
+  return ensureSessionInFlight;
+}
+
+export function useChat(options: { mode: ChatMode }) {
+  const mode = options.mode;
+  const isVideo = mode === "video";
   const store = useAppStore();
   const wsClientRef = useRef<OwlyWSClient | null>(null);
   const typingTimerRef = useRef<number | null>(null);
@@ -77,6 +139,7 @@ export function useChat() {
   }, []);
 
   const videoEnabled =
+    isVideo &&
     store.connectionState === "connected" &&
     !!store.roomId &&
     webrtcInitiator !== null;
@@ -96,7 +159,8 @@ export function useChat() {
   releaseLocalMediaRef.current = video.releaseLocalMedia;
 
   const facePresence = useFacePresence({
-    enabled: store.connectionState === "connected" && !!store.roomId,
+    enabled:
+      isVideo && store.connectionState === "connected" && !!store.roomId,
     stream: video.localStream,
     onTimeout: () => {
       toast.error("Session ended because no face was detected.");
@@ -207,41 +271,16 @@ export function useChat() {
 
   // Initialize or connect WebSocket
   const initWS = useCallback(async () => {
-    let session = store.session;
-    const sessionExpired =
-      !!session?.expiresAt && new Date(session.expiresAt).getTime() <= Date.now();
-
-    if (!session || !session.token || sessionExpired) {
-      try {
-        const created = await apiFetch<{
-          sessionId: string;
-          token: string;
-          expiresAt: string;
-        }>("/session", {
-          method: "POST",
-          body: JSON.stringify({
-            interests: store.interests || [],
-            gender: store.gender || undefined,
-          }),
-        });
-
-        session = {
-          sessionId: created.sessionId,
-          token: created.token,
-          expiresAt: created.expiresAt,
-          ageVerified: true,
-          interests: store.interests || [],
-          gender: store.gender,
-        };
-        store.setSession(session);
-      } catch (err) {
-        console.error("Failed to establish session:", err);
-        store.setConnectionState(
-          "error",
-          err instanceof Error ? err.message : "Failed to create session"
-        );
-        return null;
-      }
+    let session: UserSession;
+    try {
+      session = await ensureAnonymousSession();
+    } catch (err) {
+      console.error("Failed to establish session:", err);
+      store.setConnectionState(
+        "error",
+        err instanceof Error ? err.message : "Failed to create session"
+      );
+      return null;
     }
 
     if (!wsClientRef.current) {
@@ -391,11 +430,15 @@ export function useChat() {
             break;
 
           case "webrtc.signal":
-            webrtcHandlersRef.current?.onSignal(event.data);
+            if (isVideo) {
+              webrtcHandlersRef.current?.onSignal(event.data);
+            }
             break;
 
           case "video.state":
-            webrtcHandlersRef.current?.onVideoState(event.data);
+            if (isVideo) {
+              webrtcHandlersRef.current?.onVideoState(event.data);
+            }
             break;
 
           case "error":
@@ -461,6 +504,7 @@ export function useChat() {
     return wsClientRef.current;
   }, [
     store,
+    isVideo,
     scheduleAutoQueue,
     markQueueSettled,
     markDeviceClaimed,
@@ -479,15 +523,18 @@ export function useChat() {
       try {
         clearAutoQueueTimer();
         clearReconnectSoon();
-        // Request camera/mic on the user gesture before any network await.
-        const media = await ensureLocalMediaRef.current();
-        if (!media) {
-          joiningRef.current = false;
-          store.setConnectionState(
-            "error",
-            "Camera access is required to start a chat."
-          );
-          return;
+        store.setConnectionState("finding");
+        if (isVideo) {
+          // Request camera/mic on the user gesture before any network await.
+          const media = await ensureLocalMediaRef.current();
+          if (!media) {
+            joiningRef.current = false;
+            store.setConnectionState(
+              "error",
+              "Camera access is required to start a video chat."
+            );
+            return;
+          }
         }
         store.setConnectionState("finding");
         const client = await initWS();
@@ -505,6 +552,7 @@ export function useChat() {
           data: {
             interests: interests || store.interests,
             gender: store.gender || undefined,
+            mode,
           },
         });
       } catch (err) {
@@ -513,7 +561,7 @@ export function useChat() {
         store.setConnectionState("error");
       }
     },
-    [initWS, store, clearAutoQueueTimer, clearReconnectSoon]
+    [initWS, store, clearAutoQueueTimer, clearReconnectSoon, isVideo, mode]
   );
 
   joinQueueRef.current = joinQueue;
@@ -698,6 +746,7 @@ export function useChat() {
 
   return {
     ...store,
+    mode,
     sendCooldownSeconds,
     reactionBursts,
     joinQueue,

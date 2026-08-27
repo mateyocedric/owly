@@ -1,5 +1,5 @@
 import { redis } from "../lib/redis.js";
-import { REDIS_KEYS } from "@owly/shared";
+import { queueKeys, type ChatMode } from "@owly/shared";
 import { ATOMIC_MATCH_SCRIPT } from "../lib/lua-scripts.js";
 import { isBlocked } from "../services/block.js";
 import { requeueSession } from "./queue.js";
@@ -11,19 +11,32 @@ import {
   markUnreachableOffline,
 } from "./live-session.js";
 
+function resolveMode(mode?: ChatMode): ChatMode {
+  return mode === "text" ? "text" : "video";
+}
+
+function modeForSession(sessionId: string, fallback?: ChatMode): ChatMode {
+  return resolveMode(
+    connectionManager.get(sessionId)?.data.mode ?? fallback
+  );
+}
+
 export async function tryAtomicMatch(
-  currentSessionId: string
+  currentSessionId: string,
+  mode: ChatMode = "video"
 ): Promise<[string, string] | null> {
+  const resolved = resolveMode(mode);
+  const keys = queueKeys(resolved);
   const skipped = new Set<string>();
 
   for (let attempt = 0; attempt < 5; attempt++) {
     const result = (await redis.eval(
       ATOMIC_MATCH_SCRIPT,
       1,
-      REDIS_KEYS.QUEUE_GENERAL,
+      keys.general,
       currentSessionId,
-      REDIS_KEYS.QUEUE_INTEREST,
-      REDIS_KEYS.QUEUE_SESSION_INTERESTS,
+      keys.interest,
+      keys.sessionInterests,
       ...[...skipped]
     )) as [string, string] | null;
 
@@ -64,13 +77,16 @@ export async function tryAtomicMatch(
 }
 
 export async function restoreQueuedSession(sessionId: string) {
-  const interests = connectionManager.get(sessionId)?.data.interests ?? [];
+  const ws = connectionManager.get(sessionId);
+  const interests = ws?.data.interests ?? [];
+  const mode = modeForSession(sessionId);
   const presence = await getUserState(sessionId);
   await requeueSession(
     sessionId,
     interests,
     presence.queuedAt,
-    env.MATCHMAKING_INTEREST_TIMEOUT_SECONDS
+    env.MATCHMAKING_INTEREST_TIMEOUT_SECONDS,
+    mode
   );
 }
 

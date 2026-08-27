@@ -1,5 +1,5 @@
 import { redis } from "../lib/redis.js";
-import { REDIS_KEYS } from "@owly/shared";
+import { queueKeys, type ChatMode } from "@owly/shared";
 import { ATOMIC_INTEREST_MATCH_SCRIPT } from "../lib/lua-scripts.js";
 import { isBlocked } from "../services/block.js";
 import { restoreQueuedSession } from "./matcher.js";
@@ -9,25 +9,32 @@ import {
   markUnreachableOffline,
 } from "./live-session.js";
 
+function resolveMode(mode?: ChatMode): ChatMode {
+  return mode === "text" ? "text" : "video";
+}
+
 export async function tryInterestMatch(
   currentSessionId: string,
-  interests: string[]
+  interests: string[],
+  mode: ChatMode = "video"
 ): Promise<{ pair: [string, string]; commonInterests: string[] } | null> {
+  const resolved = resolveMode(mode);
+  const keys = queueKeys(resolved);
   const skipped = new Set<string>();
 
   for (const interest of interests) {
     const slug = normalizeInterest(interest);
     if (!slug) continue;
 
-    const interestKey = `${REDIS_KEYS.QUEUE_INTEREST}${slug}`;
+    const interestKey = `${keys.interest}${slug}`;
     const result = (await redis.eval(
       ATOMIC_INTEREST_MATCH_SCRIPT,
       2,
       interestKey,
-      REDIS_KEYS.QUEUE_GENERAL,
+      keys.general,
       currentSessionId,
-      REDIS_KEYS.QUEUE_INTEREST,
-      REDIS_KEYS.QUEUE_SESSION_INTERESTS,
+      keys.interest,
+      keys.sessionInterests,
       ...[...skipped]
     )) as [string, string] | null;
 

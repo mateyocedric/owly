@@ -58,6 +58,10 @@ export const GENDER_LABELS = {
   other: "Other",
 } as const satisfies Record<Gender, string>;
 
+/** Matchmaking / session mode: text-only vs video chat */
+export const CHAT_MODES = ["text", "video"] as const;
+export type ChatMode = (typeof CHAT_MODES)[number];
+
 export const MATCHMAKING = {
   /** Seconds to wait for interest-based match before falling back to random */
   INTEREST_TIMEOUT_SECONDS: 15,
@@ -94,7 +98,7 @@ export const DEVICE_SESSION = {
   /** Lock TTL; must outlive a missed ping and match Bun idleTimeout. */
   TTL_SECONDS: 120,
   ACTIVE_ERROR_CODE: "DEVICE_SESSION_ACTIVE",
-  ACTIVE_MESSAGE: "You already have an active session on this network.",
+  ACTIVE_MESSAGE: "You already have an active session on this device.",
 } as const;
 
 const DEVICE_ID_PATTERN =
@@ -130,12 +134,18 @@ export const MODERATION = {
 } as const;
 
 export const REDIS_KEYS = {
-  /** Main matchmaking queue */
+  /** Main matchmaking queue (video mode; legacy key) */
   QUEUE_GENERAL: "owly:queue:general",
-  /** Interest-specific queue prefix */
+  /** Interest-specific queue prefix (video mode; legacy key) */
   QUEUE_INTEREST: "owly:queue:interest:",
-  /** Set of interest slugs a queued session currently occupies */
+  /** Set of interest slugs a queued session currently occupies (video mode) */
   QUEUE_SESSION_INTERESTS: "owly:queue:session-interests:",
+  /** Text-mode general queue */
+  QUEUE_TEXT_GENERAL: "owly:queue:text:general",
+  /** Text-mode interest-specific queue prefix */
+  QUEUE_TEXT_INTEREST: "owly:queue:text:interest:",
+  /** Text-mode set of interest slugs a queued session occupies */
+  QUEUE_TEXT_SESSION_INTERESTS: "owly:queue:text:session-interests:",
   /** Session state hash prefix */
   SESSION_STATE: "owly:session:",
   /** Room ephemeral data prefix */
@@ -157,6 +167,22 @@ export const REDIS_KEYS = {
   /** Temporary active-session lock by hashed IP (optional) */
   ACTIVE_IP: "owly:active-ip:",
 } as const;
+
+/** Redis key prefixes for a chat mode (video keeps legacy keys). */
+export function queueKeys(mode: ChatMode = "video") {
+  if (mode === "text") {
+    return {
+      general: REDIS_KEYS.QUEUE_TEXT_GENERAL,
+      interest: REDIS_KEYS.QUEUE_TEXT_INTEREST,
+      sessionInterests: REDIS_KEYS.QUEUE_TEXT_SESSION_INTERESTS,
+    };
+  }
+  return {
+    general: REDIS_KEYS.QUEUE_GENERAL,
+    interest: REDIS_KEYS.QUEUE_INTEREST,
+    sessionInterests: REDIS_KEYS.QUEUE_SESSION_INTERESTS,
+  };
+}
 
 export const REPORT_CATEGORIES = [
   "spam",

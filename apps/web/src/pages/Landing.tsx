@@ -58,7 +58,7 @@ export function LandingPage() {
 
   const handleStart = () => {
     if (ageVerified && gender) {
-      navigate("/chat");
+      navigate("/session");
     } else {
       navigate("/age-gate");
     }

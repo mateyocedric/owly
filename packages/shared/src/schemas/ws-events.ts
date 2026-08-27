@@ -1,8 +1,9 @@
 import { z } from "zod";
-import { CHAT_REACTION_IDS, GENDERS, RATE_LIMITS } from "../constants.js";
+import { CHAT_MODES, CHAT_REACTION_IDS, GENDERS, RATE_LIMITS } from "../constants.js";
 
 const chatReactionIdSchema = z.enum(CHAT_REACTION_IDS);
 export const genderSchema = z.enum(GENDERS);
+export const chatModeSchema = z.enum(CHAT_MODES);
 
 // ─── Client → Server Events ─────────────────────────────────────────────────
 
@@ -11,6 +12,7 @@ export const queueJoinSchema = z.object({
   data: z.object({
     interests: z.array(z.string().max(50)).max(5).optional(),
     gender: genderSchema.optional(),
+    mode: chatModeSchema.default("video"),
   }),
 });
 

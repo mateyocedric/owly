@@ -22,7 +22,7 @@ export function InterestSelectPage() {
     if (!ageVerified || !gender) {
       navigate("/age-gate");
     } else {
-      navigate("/chat");
+      navigate("/session");
     }
   };
 

@@ -56,6 +56,15 @@ export function buildDeviceSessionLockKeys(
   return keys;
 }
 
+/** Who currently owns the device lock (if any). */
+export async function getDeviceLockHolder(
+  deviceId: string | undefined
+): Promise<string | null> {
+  const id = parseDeviceId(deviceId);
+  if (!id) return null;
+  return redis.get(deviceLockKey(id));
+}
+
 async function evalLock(
   script: string,
   keys: string[],
@@ -77,6 +86,26 @@ export async function acquireDeviceSession(
     String(ttlSeconds ?? DEVICE_SESSION.TTL_SECONDS),
   ]);
   return result === 1;
+}
+
+/**
+ * Force-claim lock keys for this session (used when the previous holder
+ * has no live WebSocket — e.g. after API hot-reload or a dropped close).
+ */
+export async function forceAcquireDeviceSession(
+  params: DeviceSessionLockParams,
+  options?: DeviceSessionLockOptions
+): Promise<boolean> {
+  const { ttlSeconds } = resolveOptions(options);
+  const keys = buildDeviceSessionLockKeys(params, options);
+  if (keys.length === 0) return true;
+  const multi = redis.multi();
+  const ttl = String(ttlSeconds ?? DEVICE_SESSION.TTL_SECONDS);
+  for (const key of keys) {
+    multi.set(key, params.sessionId, "EX", Number(ttl));
+  }
+  await multi.exec();
+  return true;
 }
 
 export async function refreshDeviceSession(

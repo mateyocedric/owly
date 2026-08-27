@@ -33,6 +33,52 @@ describe("WebSocket Event Contracts", () => {
 
     const parsed = clientEventSchema.safeParse(event);
     expect(parsed.success).toBe(true);
+    if (parsed.success && parsed.data.type === "queue.join") {
+      expect(parsed.data.data.mode).toBe("video");
+    }
+  });
+
+  it("defaults queue.join mode to video when omitted", () => {
+    const event = {
+      type: "queue.join",
+      data: {
+        interests: ["music"],
+      },
+    };
+
+    const parsed = clientEventSchema.safeParse(event);
+    expect(parsed.success).toBe(true);
+    if (parsed.success && parsed.data.type === "queue.join") {
+      expect(parsed.data.data.mode).toBe("video");
+    }
+  });
+
+  it("validates client queue.join with text mode", () => {
+    const event = {
+      type: "queue.join",
+      data: {
+        interests: ["gaming"],
+        mode: "text",
+      },
+    };
+
+    const parsed = clientEventSchema.safeParse(event);
+    expect(parsed.success).toBe(true);
+    if (parsed.success && parsed.data.type === "queue.join") {
+      expect(parsed.data.data.mode).toBe("text");
+    }
+  });
+
+  it("rejects client queue.join with an invalid mode", () => {
+    const event = {
+      type: "queue.join",
+      data: {
+        mode: "audio",
+      },
+    };
+
+    const parsed = clientEventSchema.safeParse(event);
+    expect(parsed.success).toBe(false);
   });
 
   it("rejects client queue.join with an invalid gender", () => {

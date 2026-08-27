@@ -1,5 +1,5 @@
 import type { ServerWebSocket } from "bun";
-import { WS_CLOSE, type Gender, type ServerEvent } from "@owly/shared";
+import { WS_CLOSE, type ChatMode, type Gender, type ServerEvent } from "@owly/shared";
 
 export interface WSContextData {
   sessionId: string;
@@ -10,6 +10,8 @@ export interface WSContextData {
   roomId?: string;
   interests?: string[];
   gender?: Gender;
+  /** Matchmaking mode; defaults to video for legacy clients */
+  mode?: ChatMode;
   lastMessageTime?: number;
   messagePenaltyUntil?: number;
   recentMessageTimes?: number[];

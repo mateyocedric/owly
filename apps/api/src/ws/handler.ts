@@ -7,6 +7,8 @@ import { removeFromQueue } from "../matchmaking/queue.js";
 import { markOnline, markOffline } from "../services/online.js";
 import {
   acquireDeviceSession,
+  forceAcquireDeviceSession,
+  getDeviceLockHolder,
   refreshDeviceSession,
   releaseDeviceSession,
 } from "../services/device-session.js";
@@ -39,6 +41,22 @@ export const websocketHandler: WebSocketHandler<WSContextData> = {
     let acquired = false;
     try {
       acquired = await acquireDeviceSession(lockParams(ws));
+      // Stale Redis lock after API restart / dropped close: holder has no live socket.
+      if (!acquired) {
+        const holder = await getDeviceLockHolder(ws.data.deviceId);
+        if (
+          holder &&
+          holder !== ws.data.sessionId &&
+          !connectionManager.isLive(holder)
+        ) {
+          logEvent({
+            eventType: "device_session_takeover",
+            sessionId: ws.data.sessionId,
+            details: { previousSessionId: holder },
+          });
+          acquired = await forceAcquireDeviceSession(lockParams(ws));
+        }
+      }
     } catch {
       logEvent({
         eventType: "device_session_error",
@@ -116,8 +134,12 @@ export const websocketHandler: WebSocketHandler<WSContextData> = {
     await markOffline(sessionId);
     clearGeneralFallbackTimer(sessionId);
 
-    // Remove from matchmaking queues
-    await removeFromQueue(sessionId, interests);
+    // Remove from matchmaking queues (mode-specific keys)
+    await removeFromQueue(
+      sessionId,
+      interests,
+      ws.data.mode === "text" ? "text" : "video"
+    );
 
     // If currently chatting in a room, inform partner and close room
     if (roomId) {

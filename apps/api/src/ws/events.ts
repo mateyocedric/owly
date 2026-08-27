@@ -1,11 +1,12 @@
 import type { ServerWebSocket } from "bun";
 import {
   clientEventSchema,
+  type ChatMode,
   type ClientEvent,
   type Gender,
   type ServerEvent,
   RATE_LIMITS,
-  REDIS_KEYS,
+  queueKeys,
 } from "@owly/shared";
 import { env } from "../env.js";
 import { connectionManager, type WSContextData } from "./connection-manager.js";
@@ -111,7 +112,12 @@ export async function handleClientEvent(
     }
 
     case "queue.join": {
-      await handleQueueJoin(ws, parsed.data?.interests, parsed.data?.gender);
+      await handleQueueJoin(
+        ws,
+        parsed.data?.interests,
+        parsed.data?.gender,
+        parsed.data?.mode
+      );
       break;
     }
 
@@ -199,13 +205,25 @@ async function isStillQueued(sessionId: string): Promise<boolean> {
   return state.state === "queued";
 }
 
+function resolveMode(mode?: ChatMode): ChatMode {
+  return mode === "text" ? "text" : "video";
+}
+
+function sessionMode(sessionId: string, fallback?: ChatMode): ChatMode {
+  return resolveMode(
+    connectionManager.get(sessionId)?.data.mode ?? fallback
+  );
+}
+
 async function runGeneralFallback(sessionId: string) {
   if (!(await isStillQueued(sessionId))) return;
 
-  const interests = connectionManager.get(sessionId)?.data.interests ?? [];
+  const wsData = connectionManager.get(sessionId)?.data;
+  const interests = wsData?.interests ?? [];
+  const mode = sessionMode(sessionId);
 
   if (interests.length > 0) {
-    const interestMatch = await tryInterestMatch(sessionId, interests);
+    const interestMatch = await tryInterestMatch(sessionId, interests, mode);
     if (interestMatch) {
       await establishMatch(interestMatch.pair, interestMatch.commonInterests);
       return;
@@ -214,14 +232,14 @@ async function runGeneralFallback(sessionId: string) {
 
   if (!(await isStillQueued(sessionId))) return;
 
-  await addToGeneralQueue(sessionId);
+  await addToGeneralQueue(sessionId, mode);
 
   if (!(await isStillQueued(sessionId))) {
-    await redis.zrem(REDIS_KEYS.QUEUE_GENERAL, sessionId);
+    await redis.zrem(queueKeys(mode).general, sessionId);
     return;
   }
 
-  const generalMatch = await tryAtomicMatch(sessionId);
+  const generalMatch = await tryAtomicMatch(sessionId, mode);
   if (generalMatch) {
     await establishMatch(generalMatch);
   }
@@ -231,6 +249,7 @@ async function handleQueueJoin(
   ws: ServerWebSocket<WSContextData>,
   interests?: string[],
   gender?: Gender,
+  mode?: ChatMode,
   options: { fromNext?: boolean } = {}
 ) {
   const { sessionId } = ws.data;
@@ -257,11 +276,18 @@ async function handleQueueJoin(
   if (gender) {
     ws.data.gender = gender;
   }
+  // Persist mode on the socket so requeue / Next / restore stay in-mode.
+  if (mode) {
+    ws.data.mode = resolveMode(mode);
+  } else if (!ws.data.mode) {
+    ws.data.mode = "video";
+  }
+  const chatMode = resolveMode(ws.data.mode);
   const state = await getUserState(sessionId);
 
   // If already queued, notify position
   if (state.state === "queued") {
-    const pos = await getQueuePosition(sessionId);
+    const pos = await getQueuePosition(sessionId, chatMode);
     ws.send(JSON.stringify({ type: "queue.waiting", data: { position: pos } }));
     return;
   }
@@ -276,9 +302,12 @@ async function handleQueueJoin(
   await setUserState(sessionId, "queued", { queuedAt: Date.now() });
 
   const hasInterests = ws.data.interests.length > 0;
-  await addToQueue(sessionId, ws.data.interests, { general: !hasInterests });
+  await addToQueue(sessionId, ws.data.interests, {
+    general: !hasInterests,
+    mode: chatMode,
+  });
 
-  const pos = await getQueuePosition(sessionId);
+  const pos = await getQueuePosition(sessionId, chatMode);
   ws.send(
     JSON.stringify({
       type: "queue.waiting",
@@ -286,10 +315,18 @@ async function handleQueueJoin(
     })
   );
 
-  logEvent({ eventType: "queue_join", sessionId, details: { interests } });
+  logEvent({
+    eventType: "queue_join",
+    sessionId,
+    details: { interests, mode: chatMode },
+  });
 
   if (hasInterests) {
-    const interestMatch = await tryInterestMatch(sessionId, ws.data.interests);
+    const interestMatch = await tryInterestMatch(
+      sessionId,
+      ws.data.interests,
+      chatMode
+    );
     if (interestMatch) {
       await establishMatch(interestMatch.pair, interestMatch.commonInterests);
       return;
@@ -298,7 +335,7 @@ async function handleQueueJoin(
     return;
   }
 
-  const generalMatch = await tryAtomicMatch(sessionId);
+  const generalMatch = await tryAtomicMatch(sessionId, chatMode);
   if (generalMatch) {
     await establishMatch(generalMatch);
   }
@@ -324,9 +361,10 @@ async function establishMatch(
   clearGeneralFallbackTimer(u1);
   clearGeneralFallbackTimer(u2);
 
-  // Clean up queues for both users
-  await removeFromQueue(u1);
-  await removeFromQueue(u2);
+  // Clean up queues for both users (same mode — they matched in one queue)
+  const matchMode = sessionMode(u1, sessionMode(u2));
+  await removeFromQueue(u1, [], matchMode);
+  await removeFromQueue(u2, [], matchMode);
 
   const room = await createChatRoom(u1, u2, commonInterests);
   const roomId = room._id.toString();
@@ -394,7 +432,11 @@ async function relayToPartner(
 async function handleQueueLeave(ws: ServerWebSocket<WSContextData>) {
   const { sessionId } = ws.data;
   clearGeneralFallbackTimer(sessionId);
-  await removeFromQueue(sessionId, ws.data.interests);
+  await removeFromQueue(
+    sessionId,
+    ws.data.interests,
+    resolveMode(ws.data.mode)
+  );
   await setUserState(sessionId, "idle", { roomId: null });
   ws.send(JSON.stringify({ type: "chat.ended", data: { reason: "stop" } }));
   logEvent({ eventType: "queue_leave", sessionId });
@@ -575,8 +617,10 @@ async function handleChatNext(ws: ServerWebSocket<WSContextData>) {
   }
   ws.data.lastSkipTime = now;
 
-  // Automatically requeue
-  await handleQueueJoin(ws, ws.data.interests, undefined, { fromNext: true });
+  // Automatically requeue in the same mode
+  await handleQueueJoin(ws, ws.data.interests, undefined, ws.data.mode, {
+    fromNext: true,
+  });
 }
 
 async function handleChatStop(ws: ServerWebSocket<WSContextData>) {
@@ -585,7 +629,11 @@ async function handleChatStop(ws: ServerWebSocket<WSContextData>) {
     await endCurrentRoom(roomId, sessionId, "stop");
   }
   clearGeneralFallbackTimer(sessionId);
-  await removeFromQueue(sessionId, ws.data.interests);
+  await removeFromQueue(
+    sessionId,
+    ws.data.interests,
+    resolveMode(ws.data.mode)
+  );
   await setUserState(sessionId, "idle", { roomId: null });
   ws.send(JSON.stringify({ type: "chat.ended", data: { reason: "stop" } }));
 }
