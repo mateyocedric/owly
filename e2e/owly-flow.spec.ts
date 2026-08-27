@@ -32,4 +32,12 @@ test.describe("Owly Anonymous Random Chat User Flow", () => {
     await page.goto("/privacy");
     await expect(page.getByText("Privacy Policy")).toBeVisible();
   });
+
+  test("unknown routes show a 404 page", async ({ page }) => {
+    await page.goto("/this-page-does-not-exist");
+    await expect(page).toHaveTitle(/Page not found/);
+    await expect(page.getByRole("heading", { name: /Page not found/i })).toBeVisible();
+    await page.getByRole("link", { name: /Back to Home/i }).click();
+    await expect(page).toHaveURL("/");
+  });
 });

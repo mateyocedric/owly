@@ -21,10 +21,13 @@ import { PrivacyPage } from "./pages/Privacy.js";
 import { TermsPage } from "./pages/Terms.js";
 import { GuidelinesPage } from "./pages/Guidelines.js";
 import { ComponentsPage } from "./pages/Components.js";
+import { NotFoundPage } from "./pages/NotFound.js";
+
+const SESSION_ROUTES = new Set(["/session", "/session/chat", "/session/video"]);
 
 function AppRoutes() {
   const location = useLocation();
-  const isSession = location.pathname.startsWith("/session");
+  const isSession = SESSION_ROUTES.has(location.pathname);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -46,12 +49,15 @@ function AppRoutes() {
           <Route path="/session/chat" element={<SessionChatPage />} />
           <Route path="/session/video" element={<SessionVideoPage />} />
           <Route path="/chat" element={<Navigate to="/session" replace />} />
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<Navigate to="metrics" replace />} />
-            <Route path="metrics" element={<AdminMetricsPage />} />
-            <Route path="reports" element={<AdminReportsPage />} />
-            <Route path="users" element={<AdminUsersPage />} />
-            <Route path="words" element={<AdminWordsPage />} />
+          <Route path="/admin">
+            <Route element={<AdminLayout />}>
+              <Route index element={<Navigate to="metrics" replace />} />
+              <Route path="metrics" element={<AdminMetricsPage />} />
+              <Route path="reports" element={<AdminReportsPage />} />
+              <Route path="users" element={<AdminUsersPage />} />
+              <Route path="words" element={<AdminWordsPage />} />
+            </Route>
+            <Route path="*" element={<NotFoundPage />} />
           </Route>
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
@@ -59,6 +65,7 @@ function AppRoutes() {
           <Route path="/guidelines" element={<GuidelinesPage />} />
           <Route path="/omegle-alternative" element={<Navigate to="/" replace />} />
           <Route path="/components" element={<ComponentsPage />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>
       {!isSession && <Footer />}
